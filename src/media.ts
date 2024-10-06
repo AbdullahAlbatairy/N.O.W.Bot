@@ -29,6 +29,7 @@ export async function execute(interaction: CommandInteraction) {
                     before: lastId
                 });
 
+
                 if (messages.size === 0) break;
 
                 totalProcessed += messages.size;

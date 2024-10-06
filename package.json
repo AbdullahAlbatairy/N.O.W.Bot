@@ -1,12 +1,12 @@
 {
-  "name": "sinner-purger",
+  "name": "media-purger",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-     "dev": "tsx watch src/index.ts",
-     "start": "node dist/index.js",
-     "build": "tsup src/index.ts --minify"
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsup src/index.ts --minify"
   },
   "author": "",
   "license": "ISC",
