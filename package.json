@@ -1,5 +1,5 @@
 {
-  "name": "media-purger",
+  "name": "N.O.W.Hub",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,8 @@
   "description": "",
   "dependencies": {
     "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "tsup": "^8.3.0",
