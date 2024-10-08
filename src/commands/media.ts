@@ -1,8 +1,8 @@
-import { Collection, CommandInteraction, DiscordAPIError, Message, SlashCommandBuilder, TextChannel } from 'discord.js'
+import { CommandInteraction, DiscordAPIError, Message, SlashCommandBuilder, TextChannel } from 'discord.js'
 import { promises } from 'fs'
+import { addActiveCommand, isCommandActive, removeActiveCommand } from '../lock-mechanism';
 
 
-const activeCommands = new Map<string, Set<string>>();
 export const data = new SlashCommandBuilder()
     .setName('media')
     .setDescription('Allow user to remove media')
@@ -125,27 +125,5 @@ export async function execute(interaction: CommandInteraction) {
         await interaction.user.send(`Processing complete in <#${interaction.channel.id}>! Deleted ${attachments} attachments in ${totalProcessed} messages. Error encountered: ${deletionErrors}`);
     } else {
         await interaction.reply('You are not authorized to use this command.');
-    }
-}
-
-function isCommandActive(commandKey: string, userId: string): boolean {
-    const activeUsers = activeCommands.get(commandKey);
-    return activeUsers ? activeUsers.has(userId) : false;
-}
-
-function addActiveCommand(commandKey: string, userId: string): void {
-    if (!activeCommands.has(commandKey)) {
-        activeCommands.set(commandKey, new Set());
-    }
-    activeCommands.get(commandKey)!.add(userId);
-}
-
-function removeActiveCommand(commandKey: string, userId: string): void {
-    const activeUsers = activeCommands.get(commandKey);
-    if (activeUsers) {
-        activeUsers.delete(userId);
-        if (activeUsers.size === 0) {
-            activeCommands.delete(commandKey);
-        }
     }
 }
