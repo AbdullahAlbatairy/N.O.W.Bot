@@ -10,4 +10,6 @@ COPY . .
 
 RUN npm run build
 
+RUN mkdir -p /app/data
+
 CMD ["npm", "start"]

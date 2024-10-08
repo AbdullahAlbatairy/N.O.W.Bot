@@ -1,6 +1,8 @@
 import { Collection, CommandInteraction, DiscordAPIError, Message, SlashCommandBuilder, TextChannel } from 'discord.js'
 import { promises } from 'fs'
 
+
+const activeCommands = new Map<string, Set<string>>();
 export const data = new SlashCommandBuilder()
     .setName('media')
     .setDescription('Allow user to remove media')
@@ -14,21 +16,32 @@ export async function execute(interaction: CommandInteraction) {
 
     const channel = interaction.channel;
     const userId = interaction.user.id;
+    const commandKey = `${interaction.commandName}-${channel.id}`
     let lastId: string | undefined;
     let attachments = 0;
     let totalProcessed = 0;
     let deletionErrors = 0;
 
 
+    // Check if the command is already running for this user in this channel
+    if (isCommandActive(commandKey, userId)) {
+        await interaction.reply({ content: 'This command is already running. Please wait for it to finish.', ephemeral: true });
+        return;
+    }
+
+    // Mark the command as active for this user
+    addActiveCommand(commandKey, userId);
 
 
 
-    if (userId === '352190104540020737') {
+
+
+    if (userId === '352190104540020737' || userId === '744006301738336267') {
         await interaction.deferReply({ ephemeral: true });
-        const file = await promises.readFile(`${userId}-${interaction.channel.id}.txt`, 'utf8').catch(() => {
+        const file = await promises.readFile(`/app/data/${userId}-${interaction.channel.id}.txt`, 'utf8').catch(() => {
             return;
         });
-        if(file) { 
+        if (file) {
             lastId = file.split(',')[0];
             attachments = Number(file.split(',')[1]);
             totalProcessed = Number(file.split(',')[2]);
@@ -43,7 +56,7 @@ export async function execute(interaction: CommandInteraction) {
 
 
                 if (messages.size === 0) {
-                    await promises.rm(`./${userId}-${interaction.channel.id}.txt`, { force: true });
+                    await promises.rm(`/app/data/${userId}-${interaction.channel.id}.txt`, { force: true });
                     break;
                 }
 
@@ -68,7 +81,7 @@ export async function execute(interaction: CommandInteraction) {
                                 } else {
                                     console.error(`Error deleting message ${msg.id}:`, error);
                                     deletionErrors++;
-                                } 
+                                }
                             }
                         } else {
                             lastMessage = msg;
@@ -86,18 +99,16 @@ export async function execute(interaction: CommandInteraction) {
 
 
                 if (messages.size < 100) {
-                    await promises.rm(`./${userId}-${interaction.channel.id}.txt`, { force: true });
+                    await promises.rm(`/app/data/${userId}-${interaction.channel.id}.txt`, { force: true });
                     break;
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 100));
 
             } catch (error) {
-                if(error instanceof DiscordAPIError && error.code === 50027) {
-                    await promises.writeFile(`./${userId}-${interaction.channel.id}.txt`, `${lastId},${attachments},${totalProcessed},${deletionErrors}`);
-                    const percent = totalProcessed/interaction.channel.messages.cache.size*100;
-                    const percentage = `${percent.toFixed(2)}%`
-                    await interaction.user.send(`the token expired while you are trying delete all media in ${interaction.channel.name}! run the command again in the same channel to resume the process.`);
+                if (error instanceof DiscordAPIError && error.code === 50027) {
+                    await promises.writeFile(`/app/data/${userId}-${interaction.channel.id}.txt`, `${lastId},${attachments},${totalProcessed},${deletionErrors}`);
+                    await interaction.user.send(`the token expired while you are trying delete all media in <#${interaction.channel.id}>! run the command again in the same channel to resume the process.`);
                     return
                 }
 
@@ -105,11 +116,36 @@ export async function execute(interaction: CommandInteraction) {
                 console.error('Error fetching messages:', error);
                 await interaction.editReply('An error occurred while processing messages.');
                 return;
+            } finally {
+                removeActiveCommand(commandKey, userId);
             }
         }
 
         await interaction.editReply(`Processing complete! Deleted ${attachments} attachments in ${totalProcessed} messages. Error encountered: ${deletionErrors}`);
+        await interaction.user.send(`Processing complete in <#${interaction.channel.id}>! Deleted ${attachments} attachments in ${totalProcessed} messages. Error encountered: ${deletionErrors}`);
     } else {
         await interaction.reply('You are not authorized to use this command.');
+    }
+}
+
+function isCommandActive(commandKey: string, userId: string): boolean {
+    const activeUsers = activeCommands.get(commandKey);
+    return activeUsers ? activeUsers.has(userId) : false;
+}
+
+function addActiveCommand(commandKey: string, userId: string): void {
+    if (!activeCommands.has(commandKey)) {
+        activeCommands.set(commandKey, new Set());
+    }
+    activeCommands.get(commandKey)!.add(userId);
+}
+
+function removeActiveCommand(commandKey: string, userId: string): void {
+    const activeUsers = activeCommands.get(commandKey);
+    if (activeUsers) {
+        activeUsers.delete(userId);
+        if (activeUsers.size === 0) {
+            activeCommands.delete(commandKey);
+        }
     }
 }

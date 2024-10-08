@@ -10,23 +10,35 @@ const client = new Client({
 
 
 client.once("ready", () => {
-    console.log("Discord bot is ready! 🤖");
-  });
+  console.log("Discord bot is ready! 🤖");
+});
 
-  client.on("guildCreate", async (guild) => {
-    await deployCommands({ guildId: guild.id });
-  });
-
-
-  client.on("interactionCreate", async (interaction) => {
-    if (!interaction.isCommand()) {
-      return;
-    }
-    const { commandName } = interaction;
-    if (commands[commandName as keyof typeof commands]) {
-      commands[commandName as keyof typeof commands].execute(interaction);
-    }
-  });
+client.on("guildCreate", async (guild) => {
+  await deployCommands({ guildId: guild.id });
+});
 
 
-  client.login(config.DISCORD_TOKEN);
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isCommand()) {
+    return;
+  }
+  const { commandName } = interaction;
+  if (commands[commandName as keyof typeof commands]) {
+    commands[commandName as keyof typeof commands].execute(interaction);
+  }
+});
+
+// process.on("SIGTERM", () => {
+//   console.log("sigterm")
+//   client.destroy();
+//   process.exit(0);
+// });
+
+// process.on("SIGINT", () => {
+//   console.log("sigint")
+//   client.destroy();
+//   process.exit(0);
+// });
+
+
+client.login(config.DISCORD_TOKEN);
