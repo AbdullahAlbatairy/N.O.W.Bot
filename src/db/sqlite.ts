@@ -30,21 +30,19 @@ export async function createTable(): Promise<void> {
 
     await db.exec(`CREATE TABLE IF NOT EXISTS emojis (
         emoji_id TEXT PRIMARY KEY,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        FOREIGN KEY (message_id) REFERENCES messages(message_id)
     )`);
     console.log('Created emojis table');
 
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS message_emojis (
-            message_id TEXT,
-            emoji_id TEXT,
-            PRIMARY KEY (message_id, emoji_id),
-            FOREIGN KEY (message_id) REFERENCES messages(message_id),
-            FOREIGN KEY (emoji_id) REFERENCES emojis(emoji_id)
-        )
+    await db.exec(`CREATE TABLE IF NOT EXISTS emoji_count (
+        emoji_id TEXT PRIMARY KEY,
+        count INTEGER NOT NULL
+    )
     `);
 
-    console.log('Created message_emojis table');
+    console.log('Created emoji_count table');
 }
 
 export async function beginTransaction(): Promise<void> {
@@ -55,19 +53,13 @@ export async function beginTransaction(): Promise<void> {
 
 export async function addMessage(messageId: string, authorId: string): Promise<void> {
     if (!db) throw new Error('Database not connected');
-    await db.run('INSERT OR REPLACE INTO messages (message_id, author_id) VALUES (?, ?)', [messageId, authorId]);
+    db.run('INSERT OR REPLACE INTO messages (message_id, author_id) VALUES (?, ?)', [messageId, authorId]).then(() => console.log('Insert message is ready'));
 }
 
-export async function addEmoji(emojiId: string, name: string): Promise<void> {
+export async function addEmoji(emojiId: string, name: string, messageId: string): Promise<void> {
     if (!db) throw new Error('Database not connected');
-    await db.run('INSERT OR REPLACE INTO emojis (emoji_id, name) VALUES (?, ?)', [emojiId, name]);
+    db.run('INSERT OR REPLACE INTO emojis (emoji_id, name, message_id) VALUES (?, ?, ?)', [emojiId, name, messageId]).then(() => console.log('insert emoji is ready'));
 }
-
-export async function addMessageEmoji(messageId: string, emojiId: string): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.run('INSERT OR REPLACE INTO message_emojis (message_id, emoji_id) VALUES (?, ?)', [messageId, emojiId]);
-}
-
 export async function commit(): Promise<void> {
     if (!db) throw new Error('Database not connected');
     await db.exec('COMMIT');
@@ -95,15 +87,15 @@ export async function getAllMessageEmojis(): Promise<any[]> {
 
 export async function getEmojisCount(): Promise<Map<string, number>> {
     if (!db) throw new Error('Database not connected');
-    
+
     const emojiCounts = new Map<string, number>();
-    
+
     const rows = await db.all('SELECT name, COUNT(*) as count FROM emojis GROUP BY name');
-    
+
     for (const row of rows) {
         emojiCounts.set(row.name, row.count);
     }
-    
+
     return emojiCounts;
 }
 

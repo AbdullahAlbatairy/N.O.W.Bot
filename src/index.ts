@@ -3,7 +3,7 @@ import { deployCommands } from "./deploy-commands";
 import { commands } from "./commands";
 import { config } from "./config";
 import { promises } from "fs";
-import { connect, createTable, beginTransaction, commit, addMessage, addEmoji, addMessageEmoji, rollback, getAllMessages, getAllEmojis, getAllMessageEmojis, getEmojisCount } from './db/sqlite';
+import { connect, createTable, beginTransaction, commit, addMessage, addEmoji, rollback, getAllMessages, getAllEmojis, getAllMessageEmojis, getEmojisCount } from './db/sqlite';
 import { v4 as uuid } from 'uuid';
 
 const client = new Client({
@@ -18,7 +18,7 @@ let count: Map<string, number>;
 
 client.once("ready", async () => {
   // await openEmojiFile();
-  await connect('./data/emoji.db');
+  await connect('./data/N.O.W.db');
   await createTable();
 
   console.log("Discord bot is ready! 🤖");
@@ -43,7 +43,8 @@ client.on("interactionCreate", async (interaction) => {
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
-  if (message.author.globalName !== "Human") return
+  if (message.channel.id !== "690902062141145128") return //TEST condition
+  if (message.author.globalName !== "Human") return // TEST condition
 
   const discordEmojiRegExp = /<:([\w]+):\d+>/g;
 
@@ -53,11 +54,10 @@ client.on("messageCreate", async (message) => {
   if (match) {
     try {
       match.forEach(async (emoji) => {
-        beginTransaction()
         const emojiId = uuid()
+        beginTransaction()
         addMessage(messageId, messageAuthor)
-        addEmoji(emojiId, emoji)
-        addMessageEmoji(messageId, emojiId)
+        addEmoji(emojiId, emoji, messageId)
         commit()
       })
     }
@@ -69,8 +69,21 @@ client.on("messageCreate", async (message) => {
   count = await getEmojisCount();
 
   count.forEach((value, key) => {
-    message.channel.send(`Emoji: ${key} Count: ${value}`)
+    console.log(key, value)
   })
+
+  const allMessages = await getAllMessages();
+  const allEmojis = await getAllEmojis();
+
+  allMessages.forEach((message) => {
+    console.log(message)
+
+  })
+
+  allEmojis.forEach((emoji) => {
+    console.log(emoji)
+  })
+
 
 })
 
