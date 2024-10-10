@@ -1,21 +1,34 @@
-
 import { Client } from "discord.js";
 import { deployCommands } from "./deploy-commands";
 import { commands } from "./commands";
 import { config } from "./config";
+import { promises } from "fs";
+import { connect, createTable, beginTransaction, commit, addMessage, addEmoji, addMessageEmoji, rollback, getAllMessages, getAllEmojis, getAllMessageEmojis, getEmojisCount } from './db/sqlite';
+import { v4 as uuid } from 'uuid';
 
 const client = new Client({
-  intents: ["Guilds", "GuildMessages", "DirectMessages"],
+  intents: ["Guilds", "GuildMessages", "DirectMessages", "MessageContent"],
 });
 
+let file: Buffer | void;
+let json: string;
+let count: Map<string, number>;
 
-client.once("ready", () => {
+
+
+client.once("ready", async () => {
+  // await openEmojiFile();
+  await connect('./data/emoji.db');
+  await createTable();
+
   console.log("Discord bot is ready! 🤖");
+
 });
 
-client.on("guildCreate", async (guild) => {
-  await deployCommands({ guildId: guild.id });
+client.on("guildCreate", async () => {
+  await deployCommands();
 });
+
 
 
 client.on("interactionCreate", async (interaction) => {
@@ -28,17 +41,46 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-// process.on("SIGTERM", () => {
-//   console.log("sigterm")
-//   client.destroy();
-//   process.exit(0);
-// });
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+  if (message.author.globalName !== "Human") return
 
-// process.on("SIGINT", () => {
-//   console.log("sigint")
-//   client.destroy();
-//   process.exit(0);
-// });
+  const discordEmojiRegExp = /<:([\w]+):\d+>/g;
 
+  const messageId = message.id
+  const messageAuthor = message.author.id
+  const match = message.content.match(discordEmojiRegExp)
+  if (match) {
+    try {
+      match.forEach(async (emoji) => {
+        beginTransaction()
+        const emojiId = uuid()
+        addMessage(messageId, messageAuthor)
+        addEmoji(emojiId, emoji)
+        addMessageEmoji(messageId, emojiId)
+        commit()
+      })
+    }
+    catch (e) {
+      rollback()
+    }
+  }
+
+  count = await getEmojisCount();
+
+  count.forEach((value, key) => {
+    message.channel.send(`Emoji: ${key} Count: ${value}`)
+  })
+
+})
+
+
+client.on("messageUpdate", async (message) => {
+});
+
+
+client.on("messageDelete", async (message) => {
+});
 
 client.login(config.DISCORD_TOKEN);
+
