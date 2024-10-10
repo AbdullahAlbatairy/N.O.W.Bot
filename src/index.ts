@@ -2,8 +2,7 @@ import { Client } from "discord.js";
 import { deployCommands } from "./deploy-commands";
 import { commands } from "./commands";
 import { config } from "./config";
-import { promises } from "fs";
-import { connect, createTable, beginTransaction, commit, addMessage, addEmoji, rollback, getAllMessages, getAllEmojis, getAllMessageEmojis, getEmojisCount } from './db/sqlite';
+import { connect, createTable, beginTransaction, commit, addMessage, addEmoji, rollback, getAllMessages, getAllEmojis, getEmojisCount, increaseEmojiCount, deleteMessage, reduceEmojiCount } from './db/sqlite';
 import { v4 as uuid } from 'uuid';
 
 const client = new Client({
@@ -53,46 +52,99 @@ client.on("messageCreate", async (message) => {
   const match = message.content.match(discordEmojiRegExp)
   if (match) {
     try {
+      beginTransaction()
+      addMessage(messageId, messageAuthor)
       match.forEach(async (emoji) => {
         const emojiId = uuid()
-        beginTransaction()
-        addMessage(messageId, messageAuthor)
         addEmoji(emojiId, emoji, messageId)
-        commit()
+        increaseEmojiCount(emoji)
       })
+      commit()
     }
     catch (e) {
       rollback()
     }
   }
 
-  count = await getEmojisCount();
-
-  count.forEach((value, key) => {
-    console.log(key, value)
-  })
-
-  const allMessages = await getAllMessages();
-  const allEmojis = await getAllEmojis();
-
-  allMessages.forEach((message) => {
-    console.log(message)
-
-  })
-
-  allEmojis.forEach((emoji) => {
-    console.log(emoji)
-  })
-
-
 })
 
 
-client.on("messageUpdate", async (message) => {
+client.on("messageUpdate", async (oldMessage, newMessage) => {
+  if (newMessage.author?.bot || oldMessage.author?.bot) return;
+  if (newMessage.channel.id !== "690902062141145128" || oldMessage.channel.id !== "690902062141145128") return
+  if (newMessage.author?.globalName !== "Human" || oldMessage.author?.globalName !== "Human") return
+
+
+  const discordEmojiRegExp = /<:([\w]+):\d+>/g;
+
+
+
+  const oldMessageId = oldMessage.id
+  const oldMatch = oldMessage.content?.match(discordEmojiRegExp)
+
+  if (oldMatch) {
+    try {
+      beginTransaction()
+      deleteMessage(oldMessageId)
+      oldMatch.forEach(async (emoji) => {
+        reduceEmojiCount(emoji)
+      })
+      commit()
+    }
+    catch (e) {
+      rollback()
+    }
+  }
+
+
+  const messageId = newMessage.id
+  const messageAuthor = newMessage.author.id
+  const match = newMessage.content?.match(discordEmojiRegExp)
+
+  if (match) {
+    try {
+      beginTransaction()
+      addMessage(messageId, messageAuthor)
+      match.forEach(async (emoji) => {
+        const emojiId = uuid()
+        addEmoji(emojiId, emoji, messageId)
+        increaseEmojiCount(emoji)
+      })
+      commit()
+    }
+    catch (e) {
+      rollback()
+    }
+  }
+
 });
 
 
 client.on("messageDelete", async (message) => {
+  if (message.author?.bot) return;
+  if (message.channel.id !== "690902062141145128") return
+  if (message.author?.globalName !== "Human") return
+
+
+  const discordEmojiRegExp = /<:([\w]+):\d+>/g;
+
+  const oldMessageId = message.id
+  const oldMatch = message.content?.match(discordEmojiRegExp)
+
+  if (oldMatch) {
+    try {
+      beginTransaction()
+      deleteMessage(oldMessageId)
+      oldMatch.forEach(async (emoji) => {
+        reduceEmojiCount(emoji)
+      })
+      commit()
+    }
+    catch (e) {
+      rollback()
+    }
+  }
+
 });
 
 client.login(config.DISCORD_TOKEN);
