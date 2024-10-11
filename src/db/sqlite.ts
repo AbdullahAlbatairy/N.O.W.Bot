@@ -47,43 +47,40 @@ export async function createTable(): Promise<void> {
 
     await db.exec(`CREATE TABLE IF NOT EXISTS channel_message_tracker (
         channel_id TEXT PRIMARY KEY,
-        first_message_id TEXT NOT NULL,
-        last_message_id TEXT NOT NULL
+        from_message_id TEXT NOT NULL,
+        to_message_id TEXT 
     )`);
-
     console.log('Created channel_message_tracker table');
-
-
 }
 
 export async function beginTransaction(): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.exec('BEGIN TRANSACTION');
+    await db?.exec('BEGIN TRANSACTION');
     console.log('Began transaction');
 }
 
 
 export async function commit(): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.exec('COMMIT');
+    await db?.exec('COMMIT');
     console.log('Committed changes');
 }
 
-export async function addMessage(messageId: string, authorId: string): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.run('INSERT OR REPLACE INTO messages (message_id, author_id) VALUES (?, ?)', [messageId, authorId]);
+export async function addMessage(messageId: string, authorId: string | undefined): Promise<void> {
+    await db?.run('INSERT OR REPLACE INTO messages (message_id, author_id) VALUES (?, ?)', [messageId, authorId]);
     console.log('insert message is ready');
 }
 
 export async function addEmoji(emojiId: string, name: string, messageId: string): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.run('INSERT OR REPLACE INTO emojis (emoji_id, name, message_id) VALUES (?, ?, ?)', [emojiId, name, messageId]);
+    await db?.run('INSERT OR REPLACE INTO emojis (emoji_id, name, message_id) VALUES (?, ?, ?)', [emojiId, name, messageId]);
     console.log('insert emoji is ready');
 }
 
+export async function addChannelMessageTracker(channelId: string, fromMessageId: string, toMessageId?: string): Promise<void> {
+    await db?.run('INSERT OR REPLACE INTO channel_message_tracker (channel_id, from_message_id, to_message_id) VALUES (?, ?, ?)', [channelId, fromMessageId, toMessageId]);
+    console.log('insert channel_message_tracker is ready');
+}
+
 export async function increaseEmojiCount(emojiName: string): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.run(`
+    await db?.run(`
         INSERT INTO emoji_counts (name, count) 
         VALUES (?, 1) 
         ON CONFLICT(name) DO UPDATE SET count = count + 1
@@ -92,34 +89,39 @@ export async function increaseEmojiCount(emojiName: string): Promise<void> {
 }
 
 export async function deleteMessage(messageId: string): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.run('DELETE FROM messages WHERE message_id = ?', [messageId]);
+    await db?.run('DELETE FROM messages WHERE message_id = ?', [messageId]);
     console.log('delete message is ready');
 }
 
 export async function reduceEmojiCount(emojiName: string): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.run('UPDATE emoji_counts SET count = count - 1 WHERE name = ?', [emojiName]);
+    await db?.run('UPDATE emoji_counts SET count = count - 1 WHERE name = ?', [emojiName]);
     console.log('reduce emoji count is ready');
 }
 
+export async function getMessage(messageId: string): Promise<any | undefined> {
+    const row = await db?.get('SELECT * FROM messages WHERE message_id = ?', [messageId]);
+    return row;
+}
 
-export async function getAllMessages(): Promise<any[]> {
-    if (!db) throw new Error('Database not connected');
-    const rows = await db.all('SELECT * FROM messages');
+
+export async function getAllMessages(): Promise<any[] | undefined> {
+    const rows = await db?.all('SELECT * FROM messages');
     return rows;
 }
 
 
-export async function getAllEmojis(): Promise<any[]> {
-    if (!db) throw new Error('Database not connected');
-    const rows = await db.all('SELECT * FROM emojis');
+export async function getAllEmojis(): Promise<any[] | undefined> {
+    const rows = await db?.all('SELECT * FROM emojis');
     return rows;
 }
 
-export async function getAllMessageEmojis(): Promise<any[]> {
-    if (!db) throw new Error('Database not connected');
-    const rows = await db.all('SELECT * FROM message_emojis');
+export async function getAllMessageEmojis(): Promise<any[] | undefined> {
+    const rows = await db?.all('SELECT * FROM message_emojis');
+    return rows
+}
+
+export async function getAllChannelMessageTrackers(): Promise<any[] | undefined> {
+    const rows = await db?.all('SELECT * FROM channel_message_tracker');
     return rows
 }
 
@@ -139,8 +141,7 @@ export async function getEmojisCount(): Promise<Map<string, number>> {
 
 
 export async function rollback(): Promise<void> {
-    if (!db) throw new Error('Database not connected');
-    await db.exec('ROLLBACK');
+    await db?.exec('ROLLBACK');
     console.log('Rolled back changes');
 }
 
