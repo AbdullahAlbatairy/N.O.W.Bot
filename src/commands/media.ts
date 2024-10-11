@@ -1,6 +1,7 @@
 import { CommandInteraction, DiscordAPIError, Message, SlashCommandBuilder, TextChannel } from 'discord.js'
 import { promises } from 'fs'
 import { addActiveCommand, isCommandActive, removeActiveCommand } from '../lock-mechanism';
+import { config } from '../config';
 
 
 export const data = new SlashCommandBuilder()
@@ -36,7 +37,7 @@ export async function execute(interaction: CommandInteraction) {
 
 
 
-    if (userId === '352190104540020737' || userId === '744006301738336267') {
+    if (userId === config.HUMAN_ID || userId === config.SUBA_ID) {
         await interaction.deferReply({ ephemeral: true });
         const file = await promises.readFile(`/app/data/${userId}-${interaction.channel.id}.txt`, 'utf8').catch(() => {
             return;
@@ -65,7 +66,7 @@ export async function execute(interaction: CommandInteraction) {
                 let lastMessage: Message | undefined;
 
                 messages.forEach(async (msg) => {
-                    if (msg.author.id === "744006301738336267") {
+                    if (msg.author.id === config.SUBA_ID) {
                         const hasMediaAttachment = msg.attachments.some((a) =>
                             a.contentType?.includes('image') || a.contentType?.includes('video'));
                         if (hasMediaAttachment) {
