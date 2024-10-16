@@ -42,12 +42,16 @@ client.on("interactionCreate", async (interaction) => {
 emojiMessageListener().then(r =>
     console.log("Emoji Message Listener is ready"));
 
-client.login(config.DISCORD_TOKEN).then((user) => console.log("I am logged in!!"));
-// console.log(client.user)
-// client.user?.setPresence({
-//     activities: [{
-//         name: 'with depression',
-//         type: ActivityType.Custom,
-//     }],
-//     status: 'online'
-// });
+client.login(config.DISCORD_TOKEN).then(() => {
+client.user?.setPresence({
+    activities: [{
+        name: 'test',
+        type: ActivityType.Custom,
+    }],
+    status: 'online'
+});
+
+    }
+
+);
+
