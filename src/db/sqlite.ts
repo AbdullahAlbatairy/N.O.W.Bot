@@ -1,5 +1,5 @@
 import sqlite from 'sqlite3';
-import { open, Database } from 'sqlite';
+import {Database, open} from 'sqlite';
 
 let db: Database | null = null;
 
@@ -99,30 +99,25 @@ export async function reduceEmojiCount(emojiName: string): Promise<void> {
 }
 
 export async function getMessage(messageId: string): Promise<any | undefined> {
-    const row = await db?.get('SELECT * FROM messages WHERE message_id = ?', [messageId]);
-    return row;
+    return db?.get('SELECT * FROM messages WHERE message_id = ?', [messageId]);
 }
 
 
 export async function getAllMessages(): Promise<any[] | undefined> {
-    const rows = await db?.all('SELECT * FROM messages');
-    return rows;
+    return db?.all('SELECT * FROM messages');
 }
 
 
 export async function getAllEmojis(): Promise<any[] | undefined> {
-    const rows = await db?.all('SELECT * FROM emojis');
-    return rows;
+    return db?.all('SELECT * FROM emojis');
 }
 
 export async function getAllMessageEmojis(): Promise<any[] | undefined> {
-    const rows = await db?.all('SELECT * FROM message_emojis');
-    return rows
+    return db?.all('SELECT * FROM message_emojis');
 }
 
 export async function getAllChannelMessageTrackers(): Promise<any[] | undefined> {
-    const rows = await db?.all('SELECT * FROM channel_message_tracker');
-    return rows
+    return db?.all('SELECT * FROM channel_message_tracker');
 }
 
 export async function getEmojisCount(): Promise<Map<string, number>> {

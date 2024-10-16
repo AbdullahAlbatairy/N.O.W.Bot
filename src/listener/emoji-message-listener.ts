@@ -1,13 +1,13 @@
 import { client } from '../index'
-import { beginTransaction, commit, addMessage, addEmoji, rollback, getAllMessages, getAllEmojis, getEmojisCount, increaseEmojiCount, deleteMessage, reduceEmojiCount, addChannelMessageTracker, getAllChannelMessageTrackers, getMessage } from '../db/sqlite';
+import { beginTransaction, commit, addMessage, addEmoji, rollback, increaseEmojiCount, deleteMessage, reduceEmojiCount, addChannelMessageTracker, getAllChannelMessageTrackers, getMessage } from '../db/sqlite';
 import { v4 as uuid } from 'uuid';
 
 
 
 export async function emojiMessageListener() {
-    createListener()
-    updateListener()
-    deleteListener()
+    await createListener()
+    await updateListener()
+    await deleteListener()
 }
 
 async function createListener() {
@@ -22,18 +22,18 @@ async function createListener() {
         const channelId = message.channel.id
         if (match) {
             try {
-                beginTransaction()
-                addMessage(messageId, messageAuthor)
+                await beginTransaction()
+                await addMessage(messageId, messageAuthor)
                 match.forEach(async (emoji) => {
                     const emojiId = uuid()
-                    addEmoji(emojiId, emoji, messageId)
-                    increaseEmojiCount(emoji)
+                    await addEmoji(emojiId, emoji, messageId)
+                    await increaseEmojiCount(emoji)
                 })
-                addChannelMessageTracker(channelId, messageId)
-                commit()
+                await addChannelMessageTracker(channelId, messageId)
+                await commit()
             }
             catch (e) {
-                rollback()
+                await rollback()
             }
         }
     })
@@ -55,15 +55,15 @@ async function updateListener() {
 
         if (oldMatch) {
             try {
-                beginTransaction()
-                deleteMessage(oldMessageId)
+                await beginTransaction()
+                await deleteMessage(oldMessageId)
                 oldMatch.forEach(async (emoji) => {
-                    reduceEmojiCount(emoji)
+                    await reduceEmojiCount(emoji)
                 })
-                commit()
+                await commit()
             }
             catch (e) {
-                rollback()
+                await rollback()
             }
         }
 
@@ -73,17 +73,17 @@ async function updateListener() {
 
         if (match) {
             try {
-                beginTransaction()
-                addMessage(messageId, messageAuthor)
+                await beginTransaction()
+                await addMessage(messageId, messageAuthor)
                 match.forEach(async (emoji) => {
                     const emojiId = uuid()
-                    addEmoji(emojiId, emoji, messageId)
-                    increaseEmojiCount(emoji)
+                    await addEmoji(emojiId, emoji, messageId)
+                    await increaseEmojiCount(emoji)
                 })
-                commit()
+                await commit()
             }
             catch (e) {
-                rollback()
+                await rollback()
             }
         }
 
@@ -102,15 +102,15 @@ async function deleteListener() {
 
         if (oldMatch) {
             try {
-                beginTransaction()
-                deleteMessage(oldMessageId)
+                await beginTransaction()
+                await deleteMessage(oldMessageId)
                 oldMatch.forEach(async (emoji) => {
-                    reduceEmojiCount(emoji)
+                    await reduceEmojiCount(emoji)
                 })
-                commit()
+                await commit()
             }
             catch (e) {
-                rollback()
+                await rollback()
             }
         }
 
