@@ -47,8 +47,9 @@ export async function createTable(): Promise<void> {
 
     await db.exec(`CREATE TABLE IF NOT EXISTS channel_message_tracker (
         channel_id TEXT PRIMARY KEY,
-        from_message_id TEXT NOT NULL,
-        to_message_id TEXT 
+        from_message_id TEXT,
+        to_message_id TEXT,
+        is_finished INTEGER NOT NULL DEFAULT 0 CHECK (is_finished IN(0,1))  
     )`);
     console.log('Created channel_message_tracker table');
 }
@@ -74,8 +75,9 @@ export async function addEmoji(emojiId: string, name: string, messageId: string)
     console.log('insert emoji is ready');
 }
 
-export async function addChannelMessageTracker(channelId: string, fromMessageId: string, toMessageId?: string): Promise<void> {
-    await db?.run('INSERT OR REPLACE INTO channel_message_tracker (channel_id, from_message_id, to_message_id) VALUES (?, ?, ?)', [channelId, fromMessageId, toMessageId]);
+export async function addChannelMessageTracker(channelId: string | undefined, fromMessageId?: string, toMessageId?: string, isFinished?: number): Promise<void> {
+    if(!channelId) return
+    await db?.run('INSERT OR REPLACE INTO channel_message_tracker (channel_id, from_message_id, to_message_id, is_finished) VALUES (?, ?, ?,?)', [channelId, fromMessageId, toMessageId, isFinished]);
     console.log('insert channel_message_tracker is ready');
 }
 
@@ -102,7 +104,6 @@ export async function getMessage(messageId: string): Promise<any | undefined> {
     return db?.get('SELECT * FROM messages WHERE message_id = ?', [messageId]);
 }
 
-
 export async function getAllMessages(): Promise<any[] | undefined> {
     return db?.all('SELECT * FROM messages');
 }
@@ -116,7 +117,7 @@ export async function getAllMessageEmojis(): Promise<any[] | undefined> {
     return db?.all('SELECT * FROM message_emojis');
 }
 
-export async function getAllChannelMessageTrackers(): Promise<any[] | undefined> {
+export async function getAllChannelMessageTrackers(): Promise<ChannelMessageTracker[] | undefined> {
     return db?.all('SELECT * FROM channel_message_tracker');
 }
 

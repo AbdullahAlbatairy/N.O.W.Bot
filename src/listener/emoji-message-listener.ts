@@ -1,5 +1,5 @@
 import { client } from '../index'
-import { beginTransaction, commit, addMessage, addEmoji, rollback, increaseEmojiCount, deleteMessage, reduceEmojiCount, addChannelMessageTracker, getAllChannelMessageTrackers, getMessage } from '../db/sqlite';
+import { beginTransaction, commit, addMessage, addEmoji, rollback, increaseEmojiCount, deleteMessage, reduceEmojiCount, addChannelMessageTracker, getMessage } from '../db/sqlite';
 import { v4 as uuid } from 'uuid';
 
 
