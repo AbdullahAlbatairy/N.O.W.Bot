@@ -1,7 +1,7 @@
 
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
 import { createEmojiStatsMessage } from "../message-formatter";
-import { getEmojisCount } from "../db/sqlite";
+import {getEmojisCount, getLeastUsedEmoji} from "../db/sqlite";
 
 export const data = new SlashCommandBuilder()
     .setName('emoji')

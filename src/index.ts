@@ -3,9 +3,9 @@ import {deployCommands} from "./deploy-commands";
 import {commands} from "./commands";
 import {config} from "./config";
 import {connect, createTable} from './db/sqlite';
-import {emojiMessageListener} from "./listener/emoji-message-listener";
-import {channelsStorage} from "./worker/channels-storage";
-import {worker} from "./worker/channel-messages-worker";
+import {messageListener} from "./listener/message-listener";
+import {storeChannels} from "./worker/channels-storage";
+import {setupBackwardWorker} from "./worker/channel-messages-worker";
 
 export const client = new Client({
     intents: ["Guilds", "GuildMessages", "DirectMessages", "MessageContent"],
@@ -17,7 +17,7 @@ client.once("ready", async () => {
     await createTable();
     const guild = client.guilds.cache.get(config.SERVER_ID);
     if (guild) {
-        await channelsStorage(guild).then(() => worker())
+        await storeChannels(guild).then(async () => await setupBackwardWorker())
     }
     console.log("Discord bot is ready! 🤖");
 
@@ -39,19 +39,18 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 
-emojiMessageListener().then(r =>
+messageListener().then(() =>
     console.log("Emoji Message Listener is ready"));
 
 client.login(config.DISCORD_TOKEN).then(() => {
-client.user?.setPresence({
-    activities: [{
-        name: 'test',
-        type: ActivityType.Custom,
-    }],
-    status: 'online'
-});
+        client.user?.setPresence({
+            activities: [{
+                name: 'test',
+                type: ActivityType.Custom,
+            }],
+            status: 'online'
+        });
 
     }
-
 );
 

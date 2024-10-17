@@ -10,7 +10,7 @@ export function createEmojiCountEmbed(emojiCounts: Map<string, number>, title: s
 
     const sortedEmojis = [...emojiCounts.entries()]
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 10);
+            .slice(0, 20);
 
         const emojiList = sortedEmojis.map(([name, count], index) => {
             return `${name}- ${count}`;
@@ -21,29 +21,10 @@ export function createEmojiCountEmbed(emojiCounts: Map<string, number>, title: s
     return embed;
 }
 
-
-// export function createPaginationButtons(): ActionRowBuilder<ButtonBuilder> {
-//     const row = new ActionRowBuilder<ButtonBuilder>()
-//         .addComponents(
-//             new ButtonBuilder()
-//                 .setCustomId('previous')
-//                 .setLabel('Previous')
-//                 .setStyle(ButtonStyle.Primary),
-//             new ButtonBuilder()
-//                 .setCustomId('next')
-//                 .setLabel('Next')
-//                 .setStyle(ButtonStyle.Primary)
-//         );
-
-//     return row;
-// }
-
 export function createEmojiStatsMessage(emojiCounts: Map<string, number>): MessageCreateOptions {
     const embed = createEmojiCountEmbed(emojiCounts, 'Emoji Usage Statistics');
-    // const row = createPaginationButtons();
 
     return {
         embeds: [embed],
-        // components: [row]
     };
 }

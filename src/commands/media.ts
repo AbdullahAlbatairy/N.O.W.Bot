@@ -24,18 +24,12 @@ export async function execute(interaction: CommandInteraction) {
     let deletionErrors = 0;
 
 
-    // Check if the command is already running for this user in this channel
     if (isCommandActive(commandKey, userId)) {
         await interaction.reply({ content: 'This command is already running. Please wait for it to finish.', ephemeral: true });
         return;
     }
 
-    // Mark the command as active for this user
     addActiveCommand(commandKey, userId);
-
-
-
-
 
     if (userId === config.HUMAN_ID || userId === config.SUBA_ID) {
         await interaction.deferReply({ ephemeral: true });
