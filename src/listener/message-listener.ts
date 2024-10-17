@@ -1,10 +1,20 @@
-import { client } from '../index'
-import { beginTransaction, commit, addMessage, addEmoji, rollback, increaseEmojiCount, deleteMessage, reduceEmojiCount, addChannelMessageTracker, getMessage } from '../db/sqlite';
-import { v4 as uuid } from 'uuid';
+import {client} from '../index'
+import {
+    beginTransaction,
+    commit,
+    addMessage,
+    addEmoji,
+    rollback,
+    increaseEmojiCount,
+    deleteMessage,
+    reduceEmojiCount,
+    addChannelMessageTracker,
+    getMessage, updateChannelMessageTracker
+} from '../db/sqlite';
+import {v4 as uuid} from 'uuid';
 
 
-
-export async function emojiMessageListener() {
+export async function messageListener() {
     await createListener()
     await updateListener()
     await deleteListener()
@@ -24,20 +34,25 @@ async function createListener() {
             try {
                 await beginTransaction()
                 await addMessage(messageId, messageAuthor)
-                match.forEach(async (emoji) => {
-                    const emojiId = uuid()
-                    await addEmoji(emojiId, emoji, messageId)
-                    await increaseEmojiCount(emoji)
-                })
-                await addChannelMessageTracker(channelId, messageId)
+                for (const emoji of match) {
+                    const emojiId = uuid();
+                    try {
+                        await addEmoji(emojiId, emoji, messageId);
+                        await increaseEmojiCount(emoji);
+                        console.log(`Processed emoji: ${emoji} for message: ${messageId}`);
+                    } catch (error) {
+                        console.error(`Error processing emoji ${emoji} for message ${messageId}:`, error);
+                    }
+                }
+                await updateChannelMessageTracker(channelId, messageId)
                 await commit()
-            }
-            catch (e) {
+            } catch (e) {
                 await rollback()
             }
         }
     })
 }
+
 async function updateListener() {
     client.on("messageUpdate", async (oldMessage, newMessage) => {
         if (newMessage.author?.bot || oldMessage.author?.bot) return;
@@ -49,7 +64,6 @@ async function updateListener() {
         const discordEmojiRegExp = /<:([\w]+):\d+>/g;
 
 
-
         const oldMessageId = oldMessage.id
         const oldMatch = oldMessage.content?.match(discordEmojiRegExp)
 
@@ -57,12 +71,16 @@ async function updateListener() {
             try {
                 await beginTransaction()
                 await deleteMessage(oldMessageId)
-                oldMatch.forEach(async (emoji) => {
-                    await reduceEmojiCount(emoji)
-                })
+                for (const emoji of oldMatch) {
+                    try {
+                        await reduceEmojiCount(emoji);
+                        console.log(`Reduced count for emoji: ${emoji}`);
+                    } catch (error) {
+                        console.error(`Error reducing count for emoji ${emoji}:`, error);
+                    }
+                }
                 await commit()
-            }
-            catch (e) {
+            } catch (e) {
                 await rollback()
             }
         }
@@ -75,20 +93,26 @@ async function updateListener() {
             try {
                 await beginTransaction()
                 await addMessage(messageId, messageAuthor)
-                match.forEach(async (emoji) => {
-                    const emojiId = uuid()
-                    await addEmoji(emojiId, emoji, messageId)
-                    await increaseEmojiCount(emoji)
-                })
+                for (const emoji of match) {
+                    const emojiId = uuid();
+                    try {
+                        await addEmoji(emojiId, emoji, messageId);
+                        await increaseEmojiCount(emoji);
+                        console.log(`Processed emoji: ${emoji} for message: ${messageId}`);
+                    } catch (error) {
+                        console.error(`Error processing emoji ${emoji} for message ${messageId}:`, error);
+                    }
+                }
+
                 await commit()
-            }
-            catch (e) {
+            } catch (e) {
                 await rollback()
             }
         }
 
     });
 }
+
 async function deleteListener() {
     client.on("messageDelete", async (message) => {
         if (message.author?.bot) return;
@@ -104,12 +128,17 @@ async function deleteListener() {
             try {
                 await beginTransaction()
                 await deleteMessage(oldMessageId)
-                oldMatch.forEach(async (emoji) => {
-                    await reduceEmojiCount(emoji)
-                })
+                for (const emoji of oldMatch) {
+                    try {
+                        await reduceEmojiCount(emoji);
+                        console.log(`Reduced count for emoji: ${emoji}`);
+                    } catch (error) {
+                        console.error(`Error reducing count for emoji ${emoji}:`, error);
+                    }
+                }
+
                 await commit()
-            }
-            catch (e) {
+            } catch (e) {
                 await rollback()
             }
         }
