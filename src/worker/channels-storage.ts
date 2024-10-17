@@ -21,7 +21,7 @@ export async function channelsStorage(guild: Guild | undefined) {
                     }
                 }
             }
-            if (!exist && channel?.id) {
+            if (!exist && channel?.id && channel?.type === 0) {
                 await addChannelMessageTracker(channel.id);
             }
         })
