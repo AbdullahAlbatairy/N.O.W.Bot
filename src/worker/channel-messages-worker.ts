@@ -7,23 +7,17 @@ import {
 } from "../db/sqlite";
 import {currentTextChannel, currentTrackedChannel, updateChannelTracker} from "./channels-storage";
 import {v4 as uuid} from "uuid";
-
-
-//run only when the time is 12am up to 4am => Done
-//get one channel at a time and go through it each night => Done
-//check if the there is a message pointer stored in db, if not, start from the beginning
-//store the first start message, and begin scanning backward with storing the pointer for the current message
-//
+import {discordEmojiRegExp} from "../constant";
+import {serverEmojisName} from "../index";
 
 let workerJob: CronJob | null = null;
 const RIYADH_TIME_ZONE = "Asia/Riyadh"
 
 export async function setupBackwardWorker() {
 
-
-    new CronJob('09 20 * * *', () => {
+    new CronJob('00 10 * * *', () => {
         console.log(`Starting worker at ${new Date().toISOString()}`);
-        workerJob = new CronJob('*/5 * * * * *', async () => {
+        workerJob = new CronJob('*/4 * * * * *', async () => {
             console.log(`Worker running at ${new Date().toISOString()}`);
             await emojisBackwardScanner()
         }, null, true, RIYADH_TIME_ZONE)
@@ -31,7 +25,7 @@ export async function setupBackwardWorker() {
     }, null, true, RIYADH_TIME_ZONE)
 
 
-    new CronJob('0 4 * * *', () => {
+    new CronJob('0 20 * * *', () => {
         if (workerJob) {
             workerJob.stop();
             workerJob = null;
@@ -44,59 +38,69 @@ export async function setupBackwardWorker() {
 
 async function emojisBackwardScanner() {
     if (!currentTrackedChannel || !currentTextChannel) {
-        console.log("there is no more channel to scan for emojis. stopping the worker")
+        console.log("There is no more channel to scan for emojis. Stopping the worker");
         workerJob?.stop();
         workerJob = null;
         return;
     }
-    const messages = await currentTextChannel.messages.fetch({
-        limit: 100,
-        before: currentTrackedChannel.to_message_id ?? undefined
-    });
 
-    if (!messages) return;
-    if (messages.size < 100) await updateChannelMessageTracker(currentTrackedChannel.channel_id, undefined, undefined, 1);
-    if (messages.size === 0) {
-        await updateChannelMessageTracker(currentTrackedChannel.channel_id, undefined, undefined, 1);
-        await updateChannelTracker()
-    }
-    const discordEmojiRegExp = /<:([\w]+):\d+>/g;
 
-    for (const message of messages.values()) {
-        if (message.author.bot) continue;
-        console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id}`);
+    try {
+        await beginTransaction();
 
-        const match = message.content.match(discordEmojiRegExp);
-        if (!match) {
-            await updateChannelMessageTracker(message.channel.id, undefined, message.id);
-            await updateChannelTracker();
-            continue
+        const messages = await currentTextChannel.messages.fetch({
+            limit: 100,
+            before: currentTrackedChannel.to_message_id ?? undefined
+        });
+
+        if (!messages) {
+            await commit();
+            return;
         }
 
-        try {
-            await beginTransaction();
+        if (messages.size < 100) {
+            await updateChannelMessageTracker(currentTrackedChannel.channel_id, undefined, undefined, 1);
+        }
 
-            await addMessage(message.id, message.author.id);
+        if (messages.size === 0) {
+            await updateChannelTracker();
+            await commit();
+            return;
+        }
 
-            for (const emoji of match) {
-                const emojiId = uuid();
-                await addEmoji(emojiId, emoji, message.id);
-                await increaseEmojiCount(emoji);
+        for (const message of messages.values()) {
+            if (message.author.bot) {
+                await updateChannelMessageTracker(message.channel.id, undefined, message.id);
+                continue;
+            }
+            const match = message.content.match(discordEmojiRegExp);
+            if (match) {
+                let isMatchingServerEmoji = false;
+                match.forEach(m => {
+                    if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                })
+                if (isMatchingServerEmoji) {
+                    console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
+                    await addMessage(message.id, message.author.id);
+                    for (const emoji of match) {
+                            const emojiId = uuid();
+                            await addEmoji(emojiId, emoji, message.id);
+                            await increaseEmojiCount(emoji);
+                    }
+                }
             }
 
             await updateChannelMessageTracker(message.channel.id, undefined, message.id);
+        }
 
-            await commit();
-            await updateChannelTracker();
-        } catch (e: any) {
-            console.error('Error processing message:', message.id, e);
-            await rollback();
-
-            if (e.code === 'SQLITE_CONSTRAINT') {
-                console.error('Foreign key constraint failed. Skipping this message.');
-                continue;
-            }
-
+        await updateChannelTracker();
+        await commit();
+    } catch (e: any) {
+        console.error('Error processing messages:', e);
+        await rollback();
+        if (e.code === 'SQLITE_CONSTRAINT') {
+            console.error('Foreign key constraint failed. Skipping this batch of messages.');
+        } else {
             throw e;
         }
     }
