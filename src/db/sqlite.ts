@@ -1,5 +1,6 @@
 import sqlite from 'sqlite3';
 import {Database, open} from 'sqlite';
+import {tableNames} from "../constant";
 
 let db: Database | null = null;
 
@@ -24,28 +25,28 @@ export async function createTable(): Promise<void> {
 
     await db.run('PRAGMA foreign_keys = ON');
 
-    await db.exec(`CREATE TABLE IF NOT EXISTS messages (
+    await db.exec(`CREATE TABLE IF NOT EXISTS ${tableNames.messages} (
         message_id TEXT PRIMARY KEY,
         author_id TEXT NOT NULL
     )`);
     console.log('Created messages table');
 
-    await db.exec(`CREATE TABLE IF NOT EXISTS emojis (
+    await db.exec(`CREATE TABLE IF NOT EXISTS ${tableNames.emoji} (
         emoji_id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         message_id TEXT NOT NULL,
-        FOREIGN KEY (message_id) REFERENCES messages(message_id) 
+        FOREIGN KEY (message_id) REFERENCES ${tableNames.messages}(message_id) 
         ON DELETE CASCADE
     )`);
     console.log('Created emojis table');
 
-    await db.exec(`CREATE TABLE IF NOT EXISTS emoji_counts (
+    await db.exec(`CREATE TABLE IF NOT EXISTS ${tableNames.emoji_count} (
         name TEXT PRIMARY KEY,
         count INTEGER NOT NULL DEFAULT 1
     )`);
     console.log('Created emoji_counts table');
 
-    await db.exec(`CREATE TABLE IF NOT EXISTS channel_message_tracker (
+    await db.exec(`CREATE TABLE IF NOT EXISTS ${tableNames.channel_message_tracker} (
         channel_id TEXT PRIMARY KEY,
         from_message_id TEXT,
         to_message_id TEXT,
@@ -66,25 +67,25 @@ export async function commit(): Promise<void> {
 }
 
 export async function addMessage(messageId: string, authorId: string | undefined): Promise<void> {
-    await db?.run('INSERT OR REPLACE INTO messages (message_id, author_id) VALUES (?, ?)', [messageId, authorId]);
+    await db?.run(`INSERT OR REPLACE INTO ${tableNames.messages}(message_id, author_id) VALUES (?, ?)`, [messageId, authorId]);
     console.log('insert message is ready');
 }
 
 export async function addEmoji(emojiId: string, name: string, messageId: string): Promise<void> {
-    await db?.run('INSERT OR REPLACE INTO emojis (emoji_id, name, message_id) VALUES (?, ?, ?)', [emojiId, name, messageId]);
+    await db?.run(`INSERT OR REPLACE INTO ${tableNames.emoji}(emoji_id, name, message_id) VALUES (?, ?, ?)`, [emojiId, name, messageId]);
     console.log('insert emoji is ready');
 }
 
 export async function addChannelMessageTracker(channelId: string | undefined, fromMessageId?: string, toMessageId?: string, isFinished?: number): Promise<void> {
     if(!channelId) return
-    await db?.run('INSERT OR REPLACE INTO channel_message_tracker (channel_id, from_message_id, to_message_id, is_finished) VALUES (?, ?, ?,?)', [channelId, fromMessageId, toMessageId, isFinished]);
+    await db?.run(`INSERT OR REPLACE INTO ${tableNames.channel_message_tracker}(channel_id, from_message_id, to_message_id, is_finished) VALUES (?, ?, ?,?)`, [channelId, fromMessageId, toMessageId, isFinished]);
     console.log('insert channel_message_tracker is ready');
 }
 
 export async function updateChannelMessageTracker(channelId: string | undefined, fromMessageId?: string, toMessageId?: string, isFinished?: number): Promise<void> {
     if (!channelId) return;
 
-    let query = 'UPDATE channel_message_tracker SET ';
+    let query = `UPDATE ${tableNames.channel_message_tracker} SET `;
     const params: (string | number | undefined)[] = [];
     const updateFields: string[] = [];
 
@@ -124,7 +125,7 @@ export async function updateChannelMessageTracker(channelId: string | undefined,
 
 export async function increaseEmojiCount(emojiName: string): Promise<void> {
     await db?.run(`
-        INSERT INTO emoji_counts (name, count) 
+        INSERT INTO ${tableNames.emoji_count} (name, count) 
         VALUES (?, 1) 
         ON CONFLICT(name) DO UPDATE SET count = count + 1
     `, [emojiName]);
@@ -132,41 +133,45 @@ export async function increaseEmojiCount(emojiName: string): Promise<void> {
 }
 
 export async function deleteMessage(messageId: string): Promise<void> {
-    await db?.run('DELETE FROM messages WHERE message_id = ?', [messageId]);
+    await db?.run(`DELETE FROM ${tableNames.messages} WHERE message_id = ?`, [messageId]);
     console.log('delete message is ready');
 }
 
 export async function reduceEmojiCount(emojiName: string): Promise<void> {
-    await db?.run('UPDATE emoji_counts SET count = count - 1 WHERE name = ?', [emojiName]);
-    await db?.run('DELETE FROM emoji_counts WHERE name = ? AND count <= 0', [emojiName]);
+    await db?.run(`UPDATE ${tableNames.emoji_count} SET count = count - 1 WHERE name = ?`, [emojiName]);
+    await db?.run(`DELETE FROM ${tableNames.emoji_count} WHERE name = ? AND count <= 0`, [emojiName]);
     console.log('reduce emoji count is ready');
 }
 
 export async function getMessage(messageId: string): Promise<any | undefined> {
-    return db?.get('SELECT * FROM messages WHERE message_id = ?', [messageId]);
+    return db?.get(`SELECT * FROM ${tableNames.messages} WHERE message_id = ?`, [messageId]);
 }
 
 export async function getAllMessages(): Promise<any[] | undefined> {
-    return db?.all('SELECT * FROM messages');
+    return db?.all(`SELECT * FROM ${tableNames.messages}`);
 }
 
 
 export async function getAllEmojis(): Promise<any[] | undefined> {
-    return db?.all('SELECT * FROM emojis');
+    return db?.all(`SELECT * FROM ${tableNames.emoji}`);
 }
 
 export async function getAllMessageEmojis(): Promise<any[] | undefined> {
-    return db?.all('SELECT * FROM message_emojis');
+    return db?.all(`SELECT * FROM message_emojis`);
+}
+
+export async function getAllEmojisCount() {
+    return db?.all(`SELECT * FROM ${tableNames.emoji_count}`);
 }
 
 export async function getAllChannelMessageTrackers(): Promise<ChannelMessageTracker[] | undefined> {
-    return db?.all('SELECT * FROM channel_message_tracker');
+    return db?.all(`SELECT * FROM ${tableNames.channel_message_tracker}`);
 }
 
 export async function getEmojisCount(): Promise<Map<string, number>> {
     if (!db) throw new Error('Database not connected');
 
-    const rows = await db.all('SELECT name, count FROM emoji_counts');
+    const rows = await db.all(`SELECT name, count FROM ${tableNames.emoji_count}`);
 
     const emojiCounts = new Map<string, number>();
 
@@ -182,7 +187,7 @@ export async function getLeastUsedEmoji(): Promise<Map<string, number>> {
 
     const rows = await db.all(`
         SELECT name, count 
-        FROM emoji_counts 
+        FROM ${tableNames.emoji_count} 
         ORDER BY count ASC 
     `);
 
@@ -208,5 +213,3 @@ export async function close(): Promise<void> {
         db = null;
     }
 }
-
-
