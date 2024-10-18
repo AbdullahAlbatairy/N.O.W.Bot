@@ -7,20 +7,27 @@ import {messageListener} from "./listener/message-listener";
 import {storeChannels} from "./worker/channels-storage";
 import {setupBackwardWorker} from "./worker/channel-messages-worker";
 
+
+export const serverEmojisName: (string| null)[] = [];
 export const client = new Client({
     intents: ["Guilds", "GuildMessages", "DirectMessages", "MessageContent"],
 });
 
-
 client.once("ready", async () => {
     await connect('./data/N.O.W.db');
     await createTable();
-    const guild = client.guilds.cache.get(config.SERVER_ID);
+    let guild = client.guilds.cache.get(config.SERVER_ID);
     if (guild) {
         await storeChannels(guild).then(async () => await setupBackwardWorker())
     }
-    console.log("Discord bot is ready! 🤖");
 
+    const serverEmojis = client.guilds.cache.get(config.SERVER_ID)?.emojis;
+    serverEmojis?.cache.forEach(emoji => {
+        if(!emoji.animated)
+        serverEmojisName.push(`<:${emoji.name}:${emoji.id}>`);
+    })
+
+    console.log("Discord bot is ready! 🤖");
 });
 
 client.on("guildCreate", async () => {
