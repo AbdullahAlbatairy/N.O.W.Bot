@@ -1,14 +1,14 @@
-import {CronJob} from "cron"
+import { CronJob } from "cron"
 import {
     addEmoji,
     addMessage,
-    beginTransaction, commit,
-    increaseEmojiCount, rollback, updateChannelMessageTracker
+    commit,
+    increaseEmojiCount, prisma, updateChannelMessageTracker
 } from "../db/sqlite";
-import {currentTextChannel, currentTrackedChannel, updateChannelTracker} from "./channels-storage";
-import {v4 as uuid} from "uuid";
-import {discordEmojiRegExp} from "../constant";
-import {serverEmojisName} from "../index";
+import { currentTextChannel, currentTrackedChannel, updateChannelTracker } from "./channels-storage";
+import { v4 as uuid } from "uuid";
+import { discordEmojiRegExp } from "../constant";
+import { serverEmojisName } from "../index";
 
 let workerJob: CronJob | null = null;
 const RIYADH_TIME_ZONE = "Asia/Riyadh"
@@ -37,17 +37,13 @@ export async function setupBackwardWorker() {
 
 
 async function emojisBackwardScanner() {
-    if (!currentTrackedChannel || !currentTextChannel) {
-        console.log("There is no more channel to scan for emojis. Stopping the worker");
-        workerJob?.stop();
-        workerJob = null;
-        return;
-    }
-
-
-    try {
-        await beginTransaction();
-
+    await prisma.$transaction(async (prisma) => {
+        if (!currentTrackedChannel || !currentTextChannel) {
+            console.log("There is no more channel to scan for emojis. Stopping the worker");
+            workerJob?.stop();
+            workerJob = null;
+            return;
+        }
         const messages = await currentTextChannel.messages.fetch({
             limit: 100,
             before: currentTrackedChannel.to_message_id ?? undefined
@@ -59,7 +55,7 @@ async function emojisBackwardScanner() {
         }
 
         if (messages.size < 100) {
-            await updateChannelMessageTracker(currentTrackedChannel.channel_id, undefined, undefined, 1);
+            await updateChannelMessageTracker(prisma, currentTrackedChannel.channel_id, undefined, undefined, 1);
         }
 
         if (messages.size === 0) {
@@ -70,7 +66,7 @@ async function emojisBackwardScanner() {
 
         for (const message of messages.values()) {
             if (message.author.bot) {
-                await updateChannelMessageTracker(message.channel.id, undefined, message.id);
+                await updateChannelMessageTracker(prisma, message.channel.id, undefined, message.id);
                 continue;
             }
             const match = message.content.match(discordEmojiRegExp);
@@ -81,29 +77,21 @@ async function emojisBackwardScanner() {
                 })
                 if (isMatchingServerEmoji) {
                     console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
-                    await addMessage(message.id, message.author.id);
+                    await addMessage(prisma, message.id, message.author.id);
                     for (const emoji of match) {
-                            const emojiId = uuid();
-                            await addEmoji(emojiId, emoji, message.id);
-                            await increaseEmojiCount(emoji);
+                        const emojiId = uuid();
+                        await addEmoji(prisma, emojiId, emoji, message.id);
+                        await increaseEmojiCount(prisma, emoji);
                     }
                 }
             }
 
-            await updateChannelMessageTracker(message.channel.id, undefined, message.id);
+            await updateChannelMessageTracker(prisma, message.channel.id, undefined, message.id);
         }
 
         await updateChannelTracker();
         await commit();
-    } catch (e: any) {
-        console.error('Error processing messages:', e);
-        await rollback();
-        if (e.code === 'SQLITE_CONSTRAINT') {
-            console.error('Foreign key constraint failed. Skipping this batch of messages.');
-        } else {
-            throw e;
-        }
-    }
+    })
 }
 
 

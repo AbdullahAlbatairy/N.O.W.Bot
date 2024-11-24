@@ -1,17 +1,15 @@
-import {client, serverEmojisName} from '../index'
+import { client, serverEmojisName } from '../index'
 import {
-    beginTransaction,
-    commit,
     addMessage,
     addEmoji,
-    rollback,
     increaseEmojiCount,
     deleteMessage,
     reduceEmojiCount,
-    getMessage, updateChannelMessageTracker
+    getMessage, updateChannelMessageTracker,
+    prisma
 } from '../db/sqlite';
-import {v4 as uuid} from 'uuid';
-import {discordEmojiRegExp} from "../constant";
+import { v4 as uuid } from 'uuid';
+import { discordEmojiRegExp } from "../constant";
 
 
 export async function messageListener() {
@@ -34,27 +32,22 @@ async function createListener() {
             match.forEach(m => {
                 if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
             })
-
-            try {
-                if (isMatchingServerEmoji) {
-                    await beginTransaction()
-                    await addMessage(messageId, messageAuthor)
+            if (isMatchingServerEmoji) {
+                prisma.$transaction(async (prisma) => {
+                    await addMessage(prisma, messageId, messageAuthor)
                     for (const emoji of match) {
                         if (!serverEmojisName.some(name => name === emoji)) continue;
                         const emojiId = uuid();
                         try {
-                            await addEmoji(emojiId, emoji, messageId);
-                            await increaseEmojiCount(emoji);
+                            await addEmoji(prisma, emojiId, emoji, messageId);
+                            await increaseEmojiCount(prisma, emoji);
                             console.log(`Processed emoji: ${emoji} for message: ${messageId}`);
                         } catch (error) {
                             console.error(`Error processing emoji ${emoji} for message ${messageId}:`, error);
                         }
                     }
-                    await updateChannelMessageTracker(channelId, messageId)
-                    await commit()
-                }
-            } catch (e) {
-                await rollback()
+                    await updateChannelMessageTracker(prisma, channelId, messageId)
+                })
             }
 
         }
@@ -73,26 +66,22 @@ async function updateListener() {
         const oldMatch = oldMessage.content?.match(discordEmojiRegExp)
 
         if (oldMatch) {
-            try {
-                let isMatchingServerEmoji = false;
-                oldMatch.forEach(m => {
-                    if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
-                })
-                if (isMatchingServerEmoji) {
-                    await beginTransaction()
-                    await deleteMessage(oldMessageId)
+            let isMatchingServerEmoji = false;
+            oldMatch.forEach(m => {
+                if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+            })
+            if (isMatchingServerEmoji) {
+                prisma.$transaction(async (prisma) => {
+                    await deleteMessage(prisma, oldMessageId)
                     for (const emoji of oldMatch) {
                         try {
-                            await reduceEmojiCount(emoji);
+                            await reduceEmojiCount(prisma, emoji);
                             console.log(`Reduced count for emoji: ${emoji}`);
                         } catch (error) {
                             console.error(`Error reducing count for emoji ${emoji}:`, error);
                         }
                     }
-                    await commit()
-                }
-            } catch (e) {
-                await rollback()
+                })
             }
         }
 
@@ -105,25 +94,22 @@ async function updateListener() {
             match.forEach(m => {
                 if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
             })
-            try {
-                if (isMatchingServerEmoji) {
-                    await beginTransaction()
-                    await addMessage(messageId, messageAuthor)
+            if (isMatchingServerEmoji) {
+                prisma.$transaction(async (prisma) => {
+
+                    await addMessage(prisma, messageId, messageAuthor as string)
                     for (const emoji of match) {
                         const emojiId = uuid();
                         try {
-                            await addEmoji(emojiId, emoji, messageId);
-                            await increaseEmojiCount(emoji);
+                            await addEmoji(prisma, emojiId, emoji, messageId);
+                            await increaseEmojiCount(prisma, emoji);
                             console.log(`Processed emoji: ${emoji} for message: ${messageId}`);
                         } catch (error) {
                             console.error(`Error processing emoji ${emoji} for message ${messageId}:`, error);
                         }
                     }
 
-                    await commit()
-                }
-            } catch (e) {
-                await rollback()
+                })
             }
         }
 
@@ -142,27 +128,23 @@ async function deleteListener() {
         const oldMatch = message.content?.match(discordEmojiRegExp)
 
         if (oldMatch) {
-            try {
-                let isMatchingServerEmoji = false;
-                oldMatch.forEach(m => {
-                    if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
-                })
-                if (isMatchingServerEmoji) {
-                    await beginTransaction()
-                    await deleteMessage(oldMessageId)
+            let isMatchingServerEmoji = false;
+            oldMatch.forEach(m => {
+                if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+            })
+            if (isMatchingServerEmoji) {
+                prisma.$transaction(async (prisma) => {
+                    await deleteMessage(prisma, oldMessageId)
                     for (const emoji of oldMatch) {
                         try {
-                            await reduceEmojiCount(emoji);
+                            await reduceEmojiCount(prisma, emoji);
                             console.log(`Reduced count for emoji: ${emoji}`);
                         } catch (error) {
                             console.error(`Error reducing count for emoji ${emoji}:`, error);
                         }
                     }
 
-                    await commit()
-                }
-            } catch (e) {
-                await rollback()
+                })
             }
         }
 

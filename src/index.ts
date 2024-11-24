@@ -2,7 +2,7 @@ import {ActivityType, Client} from "discord.js";
 import {deployCommands} from "./deploy-commands";
 import {commands} from "./commands";
 import {config} from "./config";
-import {connect, createTable} from './db/sqlite';
+import {connect } from './db/sqlite';
 import {messageListener} from "./listener/message-listener";
 import {storeChannels} from "./worker/channels-storage";
 import {setupBackwardWorker} from "./worker/channel-messages-worker";
@@ -14,8 +14,7 @@ export const client = new Client({
 });
 
 client.once("ready", async () => {
-    await connect('./data/N.O.W.db');
-    await createTable();
+    await connect();
     let guild = client.guilds.cache.get(config.SERVER_ID);
     if (guild) {
         await storeChannels(guild).then(async () => await setupBackwardWorker())
