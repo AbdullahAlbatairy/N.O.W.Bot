@@ -48,8 +48,11 @@ async function createListener() {
                     }
                     await updateChannelMessageTracker(prisma, channelId, messageId)
                 })
+            } else {
             }
 
+        } else {
+            await updateChannelMessageTracker(prisma, channelId, messageId)
         }
     })
 }
