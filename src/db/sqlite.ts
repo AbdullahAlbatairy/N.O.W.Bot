@@ -70,7 +70,6 @@ export async function addChannelMessageTracker(prisma: PrismaTransaction, channe
 }
 
 export async function updateChannelMessageTracker(prisma: PrismaTransaction, channelId: string | undefined, fromMessageId?: string, toMessageId?: string, isFinished?: number): Promise<void> {
-    if (!channelId) return;
     await prisma.channelMessageTracker.update({
         where: {
             channelId

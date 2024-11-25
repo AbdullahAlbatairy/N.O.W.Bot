@@ -21,7 +21,7 @@ export async function storeChannels(guild: Guild | undefined) {
 
             let exist = false;
             if (channelTracker) {
-                exist = channelTracker.some(track => track.channel_id === channel.id);
+                exist = channelTracker.some(track => track.channelId === channel.id);
             }
 
             if (!exist) {
@@ -41,9 +41,9 @@ export async function storeChannels(guild: Guild | undefined) {
 
     if (channelTracker) {
         for (const channel of channelTracker) {
-            if (!channel.is_finished) {
+            if (!channel.isFinished) {
                 currentTrackedChannel = channel;
-                currentTextChannel = channels.get(`${channel.channel_id}`) as TextChannel
+                currentTextChannel = channels.get(`${channel.channelId}`) as TextChannel
                 console.log(currentTrackedChannel)
                 break;
             }
@@ -58,9 +58,9 @@ export async function updateChannelTracker() {
     channelTracker = await getAllChannelMessageTrackers();
     if (channelTracker) {
         for (const channel of channelTracker) {
-            if (!channel.is_finished) {
+            if (!channel.isFinished) {
                 currentTrackedChannel = channel;
-                currentTextChannel = channels.get(`${channel.channel_id}`) as TextChannel
+                currentTextChannel = channels.get(`${channel.channelId}`) as TextChannel
                 break;
             }
         }
