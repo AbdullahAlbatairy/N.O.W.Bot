@@ -193,3 +193,16 @@ export async function getLeastUsedEmoji(): Promise<Map<string, number>> {
 
     return leastUsedEmoji;
 }
+
+
+export async function getChannelMessageTracker(prisma: PrismaTransaction, channelId: string | undefined) {
+     return await prisma.channelMessageTracker.findUnique({
+        where: {
+            channelId
+        },
+        select: {
+            fromMessageId: true,
+            toMessageId: true
+        }
+    })
+}

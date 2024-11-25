@@ -6,7 +6,8 @@ import {
     deleteMessage,
     reduceEmojiCount,
     getMessage, updateChannelMessageTracker,
-    prisma
+    prisma,
+    getChannelMessageTracker
 } from '../db/sqlite';
 import { v4 as uuid } from 'uuid';
 import { discordEmojiRegExp } from "../constant";
@@ -121,6 +122,19 @@ async function updateListener() {
 
 async function deleteListener() {
     client.on("messageDelete", async (message) => {
+        const channelId = message.channel.id
+        const channelMessageTracker = await getChannelMessageTracker(prisma, channelId);
+
+        if(message.id === channelMessageTracker?.fromMessageId) {
+        const prevMessages = await message.channel.messages.fetch({
+            limit: 1,
+            before: channelMessageTracker?.fromMessageId ?? undefined
+        })
+
+        await updateChannelMessageTracker(prisma, channelId, prevMessages?.first()?.id, undefined)
+    }
+
+
         if (message.author?.bot) return;
         const messageExist = await getMessage(message.id);
         if (!messageExist) return
@@ -146,11 +160,9 @@ async function deleteListener() {
                             console.error(`Error reducing count for emoji ${emoji}:`, error);
                         }
                     }
-
                 })
             }
         }
-
     });
 }
 
