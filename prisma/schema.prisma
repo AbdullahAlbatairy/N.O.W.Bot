@@ -13,7 +13,8 @@ datasource db {
 model Message {
   messageId  String  @id
   authorId  String?
-  emoji      Emoji[]  
+  emoji      Emoji[]
+  createdAt   BigInt
 }
 
 model Emoji {

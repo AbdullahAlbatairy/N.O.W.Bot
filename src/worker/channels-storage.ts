@@ -1,11 +1,13 @@
 import { Collection, Guild, NonThreadGuildBasedChannel, TextChannel } from 'discord.js';
-import { addChannelMessageTracker, getAllChannelMessageTrackers, prisma } from "../db/sqlite";
+import { addChannelMessageTracker, getAllChannelMessageTrackers, getChannelMessageTracker, prisma } from "../db/sqlite";
 import { config } from '../config';
 
 
-export let currentTextChannel: TextChannel | null;
-export let currentTrackedChannel: ChannelMessageTracker | null;
-let channelTracker: ChannelMessageTracker[] | undefined;
+export let currentBackwardTextChannel: TextChannel | null;
+export let currentBackwardTrackedChannel: ChannelMessageTracker | null;
+export let currentForwardTextChannel: TextChannel | null;
+export let currentForwardTrackedChannel: ChannelMessageTracker | null;
+export let channelsMessageTrackerList: ChannelMessageTracker[] | undefined;
 let channels: Collection<string, NonThreadGuildBasedChannel | null>;
 
 export async function storeChannels(guild: Guild | undefined) {
@@ -13,15 +15,15 @@ export async function storeChannels(guild: Guild | undefined) {
     channels = await guild.channels.fetch();
 
 
-    channelTracker = await getAllChannelMessageTrackers();
+    channelsMessageTrackerList = await getAllChannelMessageTrackers();
 
     prisma.$transaction(async (prisma) => {
         for (const channel of channels.values()) {
             if (!channel?.id || channel?.type !== 0) continue;
 
             let exist = false;
-            if (channelTracker) {
-                exist = channelTracker.some(track => track.channelId === channel.id);
+            if (channelsMessageTrackerList) {
+                exist = channelsMessageTrackerList.some(track => track.channelId === channel.id);
             }
 
             if (!exist) {
@@ -37,14 +39,15 @@ export async function storeChannels(guild: Guild | undefined) {
         }
     })
 
-    if (!channelTracker) channelTracker = await getAllChannelMessageTrackers();
+    if (!channelsMessageTrackerList) channelsMessageTrackerList = await getAllChannelMessageTrackers();
 
-    if (channelTracker) {
-        for (const channel of channelTracker) {
+    if (channelsMessageTrackerList) {
+        for (const channel of channelsMessageTrackerList) {
             if (!channel.isFinished) {
-                currentTrackedChannel = channel;
-                currentTextChannel = channels.get(`${channel.channelId}`) as TextChannel
-                console.log(currentTrackedChannel)
+                currentBackwardTrackedChannel = channel;
+                currentBackwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
+                currentForwardTrackedChannel = channel;
+                currentForwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
                 break;
             }
         }
@@ -52,19 +55,46 @@ export async function storeChannels(guild: Guild | undefined) {
 }
 
 
-export async function updateChannelTracker() {
-    currentTrackedChannel = null;
-    currentTextChannel = null
-    channelTracker = await getAllChannelMessageTrackers();
-    if (channelTracker) {
-        for (const channel of channelTracker) {
+export async function updateBackwardChannelTracker() {
+    currentBackwardTrackedChannel = null;
+    currentBackwardTextChannel = null
+    channelsMessageTrackerList = await getAllChannelMessageTrackers();
+    if (channelsMessageTrackerList) {
+        for (const channel of channelsMessageTrackerList) {
             if (!channel.isFinished) {
-                currentTrackedChannel = channel;
-                currentTextChannel = channels.get(`${channel.channelId}`) as TextChannel
+                currentBackwardTrackedChannel = channel;
+                currentBackwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
                 break;
             }
         }
     }
 
 
+}
+
+
+export async function updateForwardChannelTracker() {
+    currentForwardTrackedChannel = null;
+    currentForwardTextChannel = null
+    let trackedChannel: ChannelMessageTracker | null = null;
+    let textChannel: TextChannel | null = null
+    channelsMessageTrackerList = await getAllChannelMessageTrackers();
+    if (channelsMessageTrackerList) {
+        for (const channel of channelsMessageTrackerList) {
+            trackedChannel = channel;
+            textChannel = channels.get(`${channel.channelId}`) as TextChannel
+            const messages = await textChannel.messages.fetch({
+                limit: 1,
+                after: trackedChannel.fromMessageId ?? undefined
+            });
+
+
+            if (messages.size > 0) {
+                currentForwardTrackedChannel = channel;
+                currentForwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
+                break;
+            }
+
+        }
+    }
 }

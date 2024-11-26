@@ -11,6 +11,7 @@ import {
 } from '../db/sqlite';
 import { v4 as uuid } from 'uuid';
 import { discordEmojiRegExp } from "../constant";
+import { channelsMessageTrackerList } from '../worker/channels-storage';
 
 
 export async function messageListener() {
@@ -21,11 +22,16 @@ export async function messageListener() {
 
 async function createListener() {
     client.on("messageCreate", async (message) => {
-        if (message.author.bot) return;
-
         const messageId = message.id
         const messageAuthor = message.author.id
         const channelId = message.channel.id
+        const createdAt = message.createdTimestamp
+        if (message.author.bot) {
+            if (channelsMessageTrackerList?.some(channel => channel.channelId === channelId)) {
+                await updateChannelMessageTracker(prisma, false, channelId, messageId)
+            }
+            return;
+        }
         let match = message.content.match(discordEmojiRegExp)
 
         if (match) {
@@ -35,7 +41,7 @@ async function createListener() {
             })
             if (isMatchingServerEmoji) {
                 prisma.$transaction(async (prisma) => {
-                    await addMessage(prisma, messageId, messageAuthor)
+                    await addMessage(prisma, messageId, messageAuthor, createdAt)
                     for (const emoji of match) {
                         if (!serverEmojisName.some(name => name === emoji)) continue;
                         const emojiId = uuid();
@@ -47,13 +53,13 @@ async function createListener() {
                             console.error(`Error processing emoji ${emoji} for message ${messageId}:`, error);
                         }
                     }
-                    await updateChannelMessageTracker(prisma, channelId, messageId)
+                    await updateChannelMessageTracker(prisma, false, channelId, messageId)
                 })
             } else {
             }
 
         } else {
-            await updateChannelMessageTracker(prisma, channelId, messageId)
+            await updateChannelMessageTracker(prisma, false, channelId, messageId)
         }
     })
 }
@@ -91,6 +97,7 @@ async function updateListener() {
 
         const messageId = newMessage.id
         const messageAuthor = newMessage.author?.id
+        const createdAt = newMessage.createdTimestamp
         const match = newMessage.content?.match(discordEmojiRegExp)
 
         if (match) {
@@ -101,7 +108,7 @@ async function updateListener() {
             if (isMatchingServerEmoji) {
                 prisma.$transaction(async (prisma) => {
 
-                    await addMessage(prisma, messageId, messageAuthor as string)
+                    await addMessage(prisma, messageId, messageAuthor as string, createdAt)
                     for (const emoji of match) {
                         const emojiId = uuid();
                         try {
@@ -125,16 +132,14 @@ async function deleteListener() {
         const channelId = message.channel.id
         const channelMessageTracker = await getChannelMessageTracker(prisma, channelId);
 
-        if(message.id === channelMessageTracker?.fromMessageId) {
-        const prevMessages = await message.channel.messages.fetch({
-            limit: 1,
-            before: channelMessageTracker?.fromMessageId ?? undefined
-        })
+        if (message.id === channelMessageTracker?.fromMessageId) {
+            const prevMessages = await message.channel.messages.fetch({
+                limit: 1,
+                before: channelMessageTracker?.fromMessageId ?? undefined
+            })
 
-        await updateChannelMessageTracker(prisma, channelId, prevMessages?.first()?.id, undefined)
-    }
-
-
+            await updateChannelMessageTracker(prisma, false, channelId, prevMessages?.first()?.id, undefined)
+        }
         if (message.author?.bot) return;
         const messageExist = await getMessage(message.id);
         if (!messageExist) return
