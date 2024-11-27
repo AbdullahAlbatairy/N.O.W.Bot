@@ -2,8 +2,7 @@ import { CronJob } from "cron"
 import {
     addEmoji,
     addMessage,
-    commit,
-    increaseEmojiCount, prisma, updateChannelMessageTracker
+    prisma, updateChannelMessageTracker
 } from "../db/sqlite";
 import { currentBackwardTextChannel, currentBackwardTrackedChannel, currentForwardTextChannel, currentForwardTrackedChannel, updateBackwardChannelTracker, updateForwardChannelTracker } from "./channels-storage";
 import { v4 as uuid } from "uuid";
@@ -17,7 +16,7 @@ let msg: any;
 
 export async function setupBackwardWorker() {
 
-    new CronJob('45 18 * * *', () => {
+    new CronJob('56 17 * * *', () => {
         console.log(`Starting worker at ${new Date().toISOString()}`);
         backwardWorkerJob = new CronJob('*/4 * * * * *', async () => {
             console.log(`Worker running at ${new Date().toISOString()}`);
@@ -39,7 +38,7 @@ export async function setupBackwardWorker() {
 
 export async function setupForwardWorker() {
 
-    new CronJob('08 20 * * *', () => {
+    new CronJob('47 17 * * *', () => {
         console.log(`Starting forward worker at ${new Date().toISOString()}`);
         forwardWorkerJob = new CronJob('*/4 * * * * *', async () => {
             console.log(`Worker running at ${new Date().toISOString()}`);
@@ -48,7 +47,7 @@ export async function setupForwardWorker() {
 
     }, null, true, RIYADH_TIME_ZONE)
 
-    
+
     new CronJob('0 22 * * *', () => {
         if (forwardWorkerJob) {
             forwardWorkerJob.stop();
@@ -89,7 +88,7 @@ async function emojisBackwardScanner() {
         for (const message of messages.values()) {
             msg = message
             if (message.author.bot) {
-                await updateChannelMessageTracker(prisma, true,message.channel.id, message.id, message.id);
+                await updateChannelMessageTracker(prisma, true, message.channel.id, message.id, message.id);
                 continue;
             }
             const match = message.content.match(discordEmojiRegExp);
@@ -104,7 +103,7 @@ async function emojisBackwardScanner() {
                     for (const emoji of match) {
                         const emojiId = uuid();
                         await addEmoji(prisma, emojiId, emoji, message.id);
-                        await increaseEmojiCount(prisma, emoji);
+                        // await increaseEmojiCount(prisma, emoji);
                     }
                 }
             }
@@ -129,48 +128,50 @@ async function emojisForwardScanner() {
             return;
         }
 
-        const messages = await currentForwardTextChannel.messages.fetch({
-            limit: 100,
-            after: currentForwardTrackedChannel.fromMessageId ?? undefined
-        });
+        if (currentForwardTrackedChannel.fromMessageId) {
+            const messages = await currentForwardTextChannel.messages.fetch({
+                limit: 100,
+                after: currentForwardTrackedChannel.fromMessageId ?? undefined
+            });
 
-        if (!messages) {
-            await updateForwardChannelTracker();
-            return;
-        }
-
-        if (messages.size === 0) {
-            await updateForwardChannelTracker();
-            return;
-        }
-
-        if (messages.size < 100) {
-            await updateForwardChannelTracker();
-        }
-
-        for (const message of messages.values()) {
-            msg = message
-            if (message.author.bot) {
-                await updateChannelMessageTracker(prisma, false,message.channel.id, message.id);
-                continue;
+            if (!messages) {
+                await updateForwardChannelTracker();
+                return;
             }
-            const match = message.content.match(discordEmojiRegExp);
-            if (match) {
-                let isMatchingServerEmoji = false;
-                match.forEach(m => {
-                    if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
-                })
-                if (isMatchingServerEmoji) {
-                    console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
-                    await addMessage(prisma, message.id, message.author.id, message.createdTimestamp);
-                    for (const emoji of match) {
-                        const emojiId = uuid();
-                        await addEmoji(prisma, emojiId, emoji, message.id);
-                        await increaseEmojiCount(prisma, emoji);
+
+            if (messages.size === 0) {
+                await updateForwardChannelTracker();
+                return;
+            }
+
+            if (messages.size < 100) {
+                await updateForwardChannelTracker();
+            }
+
+            for (const message of messages.values()) {
+                msg = message
+                if (message.author.bot) {
+                    await updateChannelMessageTracker(prisma, false, message.channel.id, message.id);
+                    continue;
+                }
+                const match = message.content.match(discordEmojiRegExp);
+                if (match) {
+                    let isMatchingServerEmoji = false;
+                    match.forEach(m => {
+                        if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                    })
+                    if (isMatchingServerEmoji) {
+                        console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
+                        await addMessage(prisma, message.id, message.author.id, message.createdTimestamp);
+                        for (const emoji of match) {
+                            const emojiId = uuid();
+                            await addEmoji(prisma, emojiId, emoji, message.id);
+                            // await increaseEmojiCount(prisma, emoji);
+                        }
                     }
                 }
+                await updateChannelMessageTracker(prisma, false, message.channel.id, message.id);
             }
-            await updateChannelMessageTracker(prisma, false, message.channel.id, message.id);
         }
 
     }).then(async () => {

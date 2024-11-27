@@ -43,11 +43,21 @@ export async function storeChannels(guild: Guild | undefined) {
 
     if (channelsMessageTrackerList) {
         for (const channel of channelsMessageTrackerList) {
+            let isBackwardReady = false;
+            let isForwardReady = false;
             if (!channel.isFinished) {
                 currentBackwardTrackedChannel = channel;
                 currentBackwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
+                isBackwardReady = true;
+
+            }
+            if (channel.fromMessageId) {
                 currentForwardTrackedChannel = channel;
                 currentForwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
+                isForwardReady = true;
+            }
+
+            if (isBackwardReady && isForwardReady) {
                 break;
             }
         }
@@ -80,19 +90,23 @@ export async function updateForwardChannelTracker() {
     let textChannel: TextChannel | null = null
     channelsMessageTrackerList = await getAllChannelMessageTrackers();
     if (channelsMessageTrackerList) {
+            
+
         for (const channel of channelsMessageTrackerList) {
-            trackedChannel = channel;
-            textChannel = channels.get(`${channel.channelId}`) as TextChannel
-            const messages = await textChannel.messages.fetch({
-                limit: 1,
-                after: trackedChannel.fromMessageId ?? undefined
-            });
+            if (channel.fromMessageId) {
+                trackedChannel = channel;
+                textChannel = channels.get(`${channel.channelId}`) as TextChannel
+                const messages = await textChannel.messages.fetch({
+                    limit: 100,
+                    after: trackedChannel.fromMessageId ?? undefined
+                });
 
 
-            if (messages.size > 0) {
-                currentForwardTrackedChannel = channel;
-                currentForwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
-                break;
+                if (messages.size > 0) {
+                    currentForwardTrackedChannel = channel;
+                    currentForwardTextChannel = channels.get(`${channel.channelId}`) as TextChannel
+                    break;
+                }
             }
 
         }
