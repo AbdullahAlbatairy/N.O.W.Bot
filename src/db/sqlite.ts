@@ -145,23 +145,6 @@ export async function getAllChannelMessageTrackers(): Promise<any[] | undefined>
     return await prisma.channelMessageTracker.findMany();
 }
 
-// export async function getEmojisCount(): Promise<Map<string, number>> {
-//     const rows = await prisma.emoji.groupBy({
-//         by: ['name'],
-//         _count: {
-//             name: true
-//         }
-//     })
-
-//     const emojiCounts = new Map<string, number>();
-
-//     for (const row of rows) {
-//         emojiCounts.set(row.name, row._count.name);
-//     }
-
-//     return emojiCounts;
-// }
-
 
 export async function getLeastUsedEmoji(): Promise<Map<string, number>> {
     const rows = await prisma.emojiCount.findMany(
