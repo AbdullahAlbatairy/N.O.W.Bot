@@ -2,9 +2,7 @@ import { client, serverEmojisName } from '../index'
 import {
     addMessage,
     addEmoji,
-    increaseEmojiCount,
     deleteMessage,
-    reduceEmojiCount,
     getMessage, updateChannelMessageTracker,
     prisma,
     getChannelMessageTracker
@@ -47,7 +45,6 @@ async function createListener() {
                         const emojiId = uuid();
                         try {
                             await addEmoji(prisma, emojiId, emoji, messageId);
-                            await increaseEmojiCount(prisma, emoji);
                             console.log(`Processed emoji: ${emoji} for message: ${messageId}`);
                         } catch (error) {
                             console.error(`Error processing emoji ${emoji} for message ${messageId}:`, error);
@@ -83,14 +80,6 @@ async function updateListener() {
             if (isMatchingServerEmoji) {
                 prisma.$transaction(async (prisma) => {
                     await deleteMessage(prisma, oldMessageId)
-                    for (const emoji of oldMatch) {
-                        try {
-                            await reduceEmojiCount(prisma, emoji);
-                            console.log(`Reduced count for emoji: ${emoji}`);
-                        } catch (error) {
-                            console.error(`Error reducing count for emoji ${emoji}:`, error);
-                        }
-                    }
                 })
             }
         }
@@ -113,7 +102,6 @@ async function updateListener() {
                         const emojiId = uuid();
                         try {
                             await addEmoji(prisma, emojiId, emoji, messageId);
-                            await increaseEmojiCount(prisma, emoji);
                             console.log(`Processed emoji: ${emoji} for message: ${messageId}`);
                         } catch (error) {
                             console.error(`Error processing emoji ${emoji} for message ${messageId}:`, error);
@@ -157,14 +145,6 @@ async function deleteListener() {
             if (isMatchingServerEmoji) {
                 prisma.$transaction(async (prisma) => {
                     await deleteMessage(prisma, oldMessageId)
-                    for (const emoji of oldMatch) {
-                        try {
-                            await reduceEmojiCount(prisma, emoji);
-                            console.log(`Reduced count for emoji: ${emoji}`);
-                        } catch (error) {
-                            console.error(`Error reducing count for emoji ${emoji}:`, error);
-                        }
-                    }
                 })
             }
         }
