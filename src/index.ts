@@ -19,7 +19,7 @@ client.once("ready", async () => {
     if (guild) {
         await storeChannels(guild).then(async () => {
             await setupBackwardWorker()
-            await setupForwardWorker()
+            // await setupForwardWorker()
         })
     }
 
