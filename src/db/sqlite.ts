@@ -1,7 +1,8 @@
 import sqlite from 'sqlite3';
 import { Database, open } from 'sqlite';
 import { tableNames } from "../constant";
-import { ChannelMessageTracker, PrismaClient } from '@prisma/client';
+import { ChannelMessageTracker, Emoji, PrismaClient } from '@prisma/client';
+import { THIRTY_DAYS_AGO, THREE_MONTHS_AGO } from '../constant/time-range';
 
 let db: Database | null = null;
 export let prisma: PrismaClient;
@@ -88,8 +89,8 @@ export async function updateChannelMessageTracker(prisma: PrismaTransaction, isB
             fromMessageId: true
         }
     })
-    
-    if(messageId?.fromMessageId && isBackward) fromMessageId = undefined
+
+    if (messageId?.fromMessageId && isBackward) fromMessageId = undefined
     await prisma.channelMessageTracker.update({
         where: {
             channelId
@@ -106,29 +107,6 @@ export async function updateChannelMessageTracker(prisma: PrismaTransaction, isB
     console.log('channel_message_tracker updated successfully');
 }
 
-export async function increaseEmojiCount(prisma: PrismaTransaction, emojiName: string): Promise<void> {
-    await prisma.emojiCount.upsert({
-        where: {
-            name: emojiName
-        },
-        update: {
-            count: {
-                increment: 1
-            }
-        },
-        create: {
-            name: emojiName,
-            count: 1
-        }
-    }).catch((error) => {
-        console.error('Error updating emoji count:', error);
-        return
-    })
-
-
-    console.log('update emoji count is ready');
-}
-
 export async function deleteMessage(prisma: PrismaTransaction, messageId: string): Promise<void> {
     await prisma.message.delete({
         where: {
@@ -142,23 +120,6 @@ export async function deleteMessage(prisma: PrismaTransaction, messageId: string
     console.log('delete message is ready');
 }
 
-export async function reduceEmojiCount(prisma: PrismaTransaction, emojiName: string): Promise<void> {
-    await prisma.emojiCount.update({
-        where: {
-            name: emojiName
-        },
-        data: {
-            count: {
-                decrement: 1
-            }
-        }
-    }).catch((error) => {
-        console.error('Error updating emoji count:', error);
-        return
-    })
-
-    console.log('reduce emoji count is ready');
-}
 
 export async function getMessage(messageId: string): Promise<any | undefined> {
     return await prisma.message.findUnique({
@@ -180,25 +141,27 @@ export async function getAllEmojis(): Promise<any[] | undefined> {
     return await prisma.emoji.findMany();
 }
 
-export async function getAllEmojisCount() {
-    return db?.all(`SELECT * FROM ${tableNames.emoji_count}`);
-}
-
 export async function getAllChannelMessageTrackers(): Promise<any[] | undefined> {
     return await prisma.channelMessageTracker.findMany();
 }
 
-export async function getEmojisCount(): Promise<Map<string, number>> {
-    const rows = await prisma.emojiCount.findMany();
+// export async function getEmojisCount(): Promise<Map<string, number>> {
+//     const rows = await prisma.emoji.groupBy({
+//         by: ['name'],
+//         _count: {
+//             name: true
+//         }
+//     })
 
-    const emojiCounts = new Map<string, number>();
+//     const emojiCounts = new Map<string, number>();
 
-    for (const row of rows) {
-        emojiCounts.set(row.name, row.count);
-    }
+//     for (const row of rows) {
+//         emojiCounts.set(row.name, row._count.name);
+//     }
 
-    return emojiCounts;
-}
+//     return emojiCounts;
+// }
+
 
 export async function getLeastUsedEmoji(): Promise<Map<string, number>> {
     const rows = await prisma.emojiCount.findMany(
@@ -224,9 +187,59 @@ export async function getLeastUsedEmoji(): Promise<Map<string, number>> {
 
 
 export async function getChannelMessageTracker(prisma: PrismaTransaction, channelId: string | undefined): Promise<ChannelMessageTracker | null> {
-     return await prisma.channelMessageTracker.findUnique({
+    return await prisma.channelMessageTracker.findUnique({
         where: {
             channelId
         },
     })
+}
+
+export async function getEmojisCount(period?: BigInt): Promise<Map<string, number>> {
+    let emojiCounts;
+
+    if (period) {
+        emojiCounts = await prisma.emoji.groupBy({
+            by: ['name'], // Group by emoji name
+            _count: {
+                name: true, // Count occurrences of each emoji name
+            },
+            where: {
+                message: {
+                    createdAt: {
+                        gte: THREE_MONTHS_AGO,
+                    },
+                },
+            },
+        });
+    }
+    else {
+        emojiCounts = await prisma.emoji.groupBy({
+            by: ['name'], // Group by emoji name
+            _count: {
+                name: true, // Count occurrences of each emoji name
+            },
+        });
+
+    }
+
+    // Convert the result into a Map
+    const emojiCountMap = new Map<string, number>();
+    for (const emoji of emojiCounts) {
+        emojiCountMap.set(emoji.name, emoji._count.name);
+    }
+
+    return emojiCountMap;
+}
+
+export async function getUserEmojiCount(authorId: string, emojiName: string): Promise<number> {
+    const emojiCount = await prisma.emoji.count({
+        where: {
+            name: emojiName, // Filter by the specific emoji name
+            message: {
+                authorId: authorId, // Filter by the user ID
+            },
+        },
+    });
+
+    return emojiCount;
 }
