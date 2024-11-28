@@ -1,8 +1,6 @@
-import sqlite from 'sqlite3';
-import { Database, open } from 'sqlite';
-import { tableNames } from "../constant";
-import { ChannelMessageTracker, Emoji, PrismaClient } from '@prisma/client';
-import { THIRTY_DAYS_AGO, THREE_MONTHS_AGO } from '../constant/time-range';
+import { Database } from 'sqlite';
+import { ChannelMessageTracker, PrismaClient } from '@prisma/client';
+import { calculateTimestampForMonthsAgo } from '../utils/period-range';
 
 let db: Database | null = null;
 export let prisma: PrismaClient;
@@ -177,19 +175,19 @@ export async function getChannelMessageTracker(prisma: PrismaTransaction, channe
     })
 }
 
-export async function getEmojisCount(period?: BigInt): Promise<Map<string, number>> {
+export async function getEmojisCount(period?: number): Promise<Map<string, number>> {
     let emojiCounts;
 
     if (period) {
         emojiCounts = await prisma.emoji.groupBy({
-            by: ['name'], // Group by emoji name
+            by: ['name'],
             _count: {
-                name: true, // Count occurrences of each emoji name
+                name: true,
             },
             where: {
                 message: {
                     createdAt: {
-                        gte: THREE_MONTHS_AGO,
+                        gte: calculateTimestampForMonthsAgo(period),
                     },
                 },
             },
@@ -213,6 +211,51 @@ export async function getEmojisCount(period?: BigInt): Promise<Map<string, numbe
 
     return emojiCountMap;
 }
+
+
+export async function getEmojisCountForUser(userId: string, period?: number): Promise<Map<string, number>> {
+    let emojiCounts;
+
+    if (period) {
+        emojiCounts = await prisma.emoji.groupBy({
+            by: ['name'],
+            _count: {
+                name: true,
+            },
+            where: {
+                message: {
+                    authorId: userId,
+                    createdAt: {
+                        gte: calculateTimestampForMonthsAgo(period),
+                    },
+                },
+            },
+        });
+    }
+    emojiCounts = await prisma.emoji.groupBy({
+        by: ['name'],
+        _count: {
+            name: true,
+        },
+        where: {
+            message: {
+                authorId: userId,
+            },
+        },
+    });
+
+    // Convert the result into a Map
+    const emojiCountMap = new Map<string, number>();
+    for (const emoji of emojiCounts) {
+        emojiCountMap.set(emoji.name, emoji._count.name);
+    }
+
+    return emojiCountMap;
+}
+
+
+
+
 
 export async function getUserEmojiCount(authorId: string, emojiName: string): Promise<number> {
     const emojiCount = await prisma.emoji.count({
