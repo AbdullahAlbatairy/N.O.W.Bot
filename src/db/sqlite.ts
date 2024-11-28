@@ -130,40 +130,8 @@ export async function getMessage(messageId: string): Promise<any | undefined> {
     })
 }
 
-export async function getAllMessages(): Promise<any[] | undefined> {
-    return await prisma.message.findMany();
-}
-
-
-export async function getAllEmojis(): Promise<any[] | undefined> {
-    return await prisma.emoji.findMany();
-}
-
 export async function getAllChannelMessageTrackers(): Promise<any[] | undefined> {
     return await prisma.channelMessageTracker.findMany();
-}
-
-
-export async function getLeastUsedEmoji(): Promise<Map<string, number>> {
-    const rows = await prisma.emojiCount.findMany(
-        {
-            orderBy: {
-                count: 'asc'
-            },
-            select: {
-                name: true,
-                count: true
-            }
-        }
-    );
-
-    const leastUsedEmoji = new Map<string, number>();
-
-    for (const row of rows) {
-        leastUsedEmoji.set(row.name, row.count);
-    }
-
-    return leastUsedEmoji;
 }
 
 
@@ -251,21 +219,4 @@ export async function getEmojisCountForUser(userId: string, period?: number): Pr
     }
 
     return emojiCountMap;
-}
-
-
-
-
-
-export async function getUserEmojiCount(authorId: string, emojiName: string): Promise<number> {
-    const emojiCount = await prisma.emoji.count({
-        where: {
-            name: emojiName, // Filter by the specific emoji name
-            message: {
-                authorId: authorId, // Filter by the user ID
-            },
-        },
-    });
-
-    return emojiCount;
 }

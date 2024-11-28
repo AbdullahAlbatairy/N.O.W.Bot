@@ -24,11 +24,6 @@ model Emoji {
   messageId String 
 }
 
-model EmojiCount {
-  name String  @id
-  count Int @default(1)
-}
-
 model ChannelMessageTracker {
   channelId String @id
   fromMessageId String?
