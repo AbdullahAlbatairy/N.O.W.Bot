@@ -16,17 +16,17 @@ let msg: any;
 
 export async function setupBackwardWorker() {
 
-    new CronJob('56 17 * * *', () => {
+    // new CronJob('56 17 * * *', () => {
         console.log(`Starting worker at ${new Date().toISOString()}`);
         backwardWorkerJob = new CronJob('*/4 * * * * *', async () => {
             console.log(`Worker running at ${new Date().toISOString()}`);
             await emojisBackwardScanner()
         }, null, true, RIYADH_TIME_ZONE)
 
-    }, null, true, RIYADH_TIME_ZONE)
+    // }, null, true, RIYADH_TIME_ZONE)
 
 
-    new CronJob('0 20 * * *', () => {
+    new CronJob('0 04 * * *', () => {
         if (backwardWorkerJob) {
             backwardWorkerJob.stop();
             backwardWorkerJob = null;

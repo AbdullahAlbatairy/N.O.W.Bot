@@ -29,6 +29,7 @@ client.once("ready", async () => {
             serverEmojisName.push(`<:${emoji.name}:${emoji.id}>`);
     })
 
+    await deployCommands();
     console.log("Discord bot is ready! 🤖");
 });
 
