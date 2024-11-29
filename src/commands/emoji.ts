@@ -1,7 +1,7 @@
 
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
 import { createEmojiCountStatsMessage } from "../embed-formatter/emoji-count-formatter";
-import { getEmojisCount, getEmojisCountForUser} from "../db/sqlite";
+import { getEmojisCount, getEmojisCountForUser } from "../db/sqlite";
 
 export const data = new SlashCommandBuilder()
     .setName('emoji')
@@ -20,9 +20,11 @@ export async function execute(interaction: CommandInteraction) {
     await interaction.deferReply();
     try {
 
+        const periodOption = interaction.options.data.find(option => option.name === 'period');
+        const userOption = interaction.options.data.find(option => option.name === 'user');
 
-        const period = interaction.options.data.find(option => option.name === 'period')?.value as number;
-        const user = interaction.options.data.find(option => option.name === 'user')?.value as string;
+        const period = periodOption ? Number(periodOption.value) : undefined; 
+        const user = userOption?.value as string;
 
         // Validate period
         if (period !== undefined && (!Number.isInteger(period) || period < 1)) {
