@@ -17,11 +17,11 @@ let msg: any;
 export async function setupBackwardWorker() {
 
     // new CronJob('56 17 * * *', () => {
-        console.log(`Starting worker at ${new Date().toISOString()}`);
-        backwardWorkerJob = new CronJob('*/4 * * * * *', async () => {
-            console.log(`Worker running at ${new Date().toISOString()}`);
-            await emojisBackwardScanner()
-        }, null, true, RIYADH_TIME_ZONE)
+    console.log(`Starting worker at ${new Date().toISOString()}`);
+    backwardWorkerJob = new CronJob('*/4 * * * * *', async () => {
+        console.log(`Worker running at ${new Date().toISOString()}`);
+        await emojisBackwardScanner()
+    }, null, true, RIYADH_TIME_ZONE)
 
     // }, null, true, RIYADH_TIME_ZONE)
 
@@ -68,11 +68,11 @@ async function emojisBackwardScanner() {
         }
 
         let startingPoint;
-        if(currentBackwardTrackedChannel.fromMessageId && currentBackwardTrackedChannel.toMessageId) 
+        if (currentBackwardTrackedChannel.fromMessageId && currentBackwardTrackedChannel.toMessageId)
             startingPoint = currentBackwardTrackedChannel.toMessageId
-        else if(currentBackwardTrackedChannel.fromMessageId && !currentBackwardTrackedChannel.toMessageId)
+        else if (currentBackwardTrackedChannel.fromMessageId && !currentBackwardTrackedChannel.toMessageId)
             startingPoint = currentBackwardTrackedChannel.fromMessageId
-        else if(!currentBackwardTrackedChannel.fromMessageId && currentBackwardTrackedChannel.toMessageId)
+        else if (!currentBackwardTrackedChannel.fromMessageId && currentBackwardTrackedChannel.toMessageId)
             startingPoint = currentBackwardTrackedChannel.toMessageId
         else
             startingPoint = undefined
@@ -96,7 +96,6 @@ async function emojisBackwardScanner() {
         }
 
         for (const message of messages.values()) {
-            msg = message
             if (message.author.bot) {
                 await updateChannelMessageTracker(prisma, true, message.channel.id, message.id, message.id);
                 continue;
@@ -109,11 +108,10 @@ async function emojisBackwardScanner() {
                 })
                 if (isMatchingServerEmoji) {
                     console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
-                    await addMessage(prisma, message.id, message.author.id, message.createdTimestamp);
+                    await addMessage(prisma, message.channel.id, message.id, message.author.id, message.createdTimestamp);
                     for (const emoji of match) {
                         const emojiId = uuid();
                         await addEmoji(prisma, emojiId, emoji, message.id);
-                        // await increaseEmojiCount(prisma, emoji);
                     }
                 }
             }
@@ -172,11 +170,10 @@ async function emojisForwardScanner() {
                     })
                     if (isMatchingServerEmoji) {
                         console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
-                        await addMessage(prisma, message.id, message.author.id, message.createdTimestamp);
+                        await addMessage(prisma, message.channel.id, message.id, message.author.id, message.createdTimestamp);
                         for (const emoji of match) {
                             const emojiId = uuid();
                             await addEmoji(prisma, emojiId, emoji, message.id);
-                            // await increaseEmojiCount(prisma, emoji);
                         }
                     }
                 }
