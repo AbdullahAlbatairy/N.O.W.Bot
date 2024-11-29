@@ -67,9 +67,19 @@ async function emojisBackwardScanner() {
             return;
         }
 
+        let startingPoint;
+        if(currentBackwardTrackedChannel.fromMessageId && currentBackwardTrackedChannel.toMessageId) 
+            startingPoint = currentBackwardTrackedChannel.toMessageId
+        else if(currentBackwardTrackedChannel.fromMessageId && !currentBackwardTrackedChannel.toMessageId)
+            startingPoint = currentBackwardTrackedChannel.fromMessageId
+        else if(!currentBackwardTrackedChannel.fromMessageId && currentBackwardTrackedChannel.toMessageId)
+            startingPoint = currentBackwardTrackedChannel.toMessageId
+        else
+            startingPoint = undefined
+
         const messages = await currentBackwardTextChannel.messages.fetch({
             limit: 100,
-            before: currentBackwardTrackedChannel.toMessageId ?? undefined
+            before: startingPoint
         });
 
         if (!messages) {
