@@ -22,11 +22,10 @@ export async function commit(): Promise<void> {
     console.log('Committed changes');
 }
 
-export async function addMessage(prisma: PrismaTransaction, channelId: string,messageId: string, authorId: string, createdAt: number): Promise<void> {
+export async function addMessage(prisma: PrismaTransaction, messageId: string, authorId: string, createdAt: number): Promise<void> {
     await prisma.message.create({
         data: {
             messageId,
-            channelId,
             authorId,
             createdAt
         }

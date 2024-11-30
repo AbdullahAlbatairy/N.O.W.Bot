@@ -39,7 +39,7 @@ async function createListener() {
             })
             if (isMatchingServerEmoji) {
                 prisma.$transaction(async (prisma) => {
-                    await addMessage(prisma, message.channel.id, messageId, messageAuthor, createdAt)
+                    await addMessage(prisma, messageId, messageAuthor, createdAt)
                     for (const emoji of match) {
                         if (!serverEmojisName.some(name => name === emoji)) continue; //the check again because if one message has two emojis one from the server and another one not from the server it will add both, so this remove the second one
                         const emojiId = uuid();
@@ -85,7 +85,6 @@ async function updateListener() {
         }
 
         const messageId = newMessage.id
-        const channelId = newMessage.channel.id
         const messageAuthor = newMessage.author?.id
         const createdAt = newMessage.createdTimestamp
         const match = newMessage.content?.match(discordEmojiRegExp)
@@ -98,7 +97,7 @@ async function updateListener() {
             if (isMatchingServerEmoji) {
                 prisma.$transaction(async (prisma) => {
 
-                    await addMessage(prisma, channelId, messageId, messageAuthor as string, createdAt)
+                    await addMessage(prisma, messageId, messageAuthor as string, createdAt)
                     for (const emoji of match) {
                         if (!serverEmojisName.some(name => name === emoji)) continue;
                         const emojiId = uuid();
