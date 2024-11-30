@@ -38,7 +38,7 @@ async function createListener() {
                 if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
-                prisma.$transaction(async (prisma) => {
+                await prisma.$transaction(async (prisma) => {
                     await addMessage(prisma, message.channel.id, messageId, messageAuthor, createdAt)
                     for (const emoji of match) {
                         if (!serverEmojisName.some(name => name === emoji)) continue; //the check again because if one message has two emojis one from the server and another one not from the server it will add both, so this remove the second one
@@ -78,9 +78,7 @@ async function updateListener() {
                 if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
-                prisma.$transaction(async (prisma) => {
-                    await deleteMessage(prisma, oldMessageId)
-                })
+                await deleteMessage(prisma, oldMessageId)
             }
         }
 
@@ -96,7 +94,7 @@ async function updateListener() {
                 if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
-                prisma.$transaction(async (prisma) => {
+                await prisma.$transaction(async (prisma) => {
 
                     await addMessage(prisma, channelId, messageId, messageAuthor as string, createdAt)
                     for (const emoji of match) {
@@ -145,9 +143,7 @@ async function deleteListener() {
                 if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
-                prisma.$transaction(async (prisma) => {
-                    await deleteMessage(prisma, oldMessageId)
-                })
+                await deleteMessage(prisma, oldMessageId)
             }
         }
     });

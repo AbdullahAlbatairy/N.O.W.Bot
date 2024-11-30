@@ -17,7 +17,7 @@ export async function storeChannels(guild: Guild | undefined) {
 
     channelsMessageTrackerList = await getAllChannelMessageTrackers();
 
-    prisma.$transaction(async (prisma) => {
+    await prisma.$transaction(async (prisma) => {
         for (const channel of channels.values()) {
             if (!channel?.id || channel?.type !== 0) continue;
 
