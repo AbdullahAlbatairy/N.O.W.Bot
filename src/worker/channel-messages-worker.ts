@@ -33,7 +33,7 @@ export async function setupBackwardWorker() {
         }
     }, null, true, RIYADH_TIME_ZONE)
 
-    console.log("Worker scheduled to run daily from 12:00 AM to 4:00 AM (Riyadh time)");
+    console.log("Worker scheduled to run daily from 12:00 (Riyadh time)");
 }
 
 export async function setupForwardWorker() {
@@ -110,6 +110,7 @@ async function emojisBackwardScanner() {
                     console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
                     await addMessage(prisma, message.channel.id, message.id, message.author.id, message.createdTimestamp);
                     for (const emoji of match) {
+                        if(!serverEmojisName.some(name => name === emoji)) continue;
                         const emojiId = uuid();
                         await addEmoji(prisma, emojiId, emoji, message.id);
                     }

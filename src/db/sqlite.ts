@@ -120,7 +120,7 @@ export async function deleteMessage(prisma: PrismaTransaction, messageId: string
 }
 
 
-export async function getMessage(messageId: string): Promise<any | undefined> {
+export async function getMessage(prisma: PrismaTransaction, messageId: string): Promise<any | undefined> {
     return await prisma.message.findUnique({
         where: {
             messageId

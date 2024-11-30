@@ -41,7 +41,7 @@ async function createListener() {
                 prisma.$transaction(async (prisma) => {
                     await addMessage(prisma, message.channel.id, messageId, messageAuthor, createdAt)
                     for (const emoji of match) {
-                        if (!serverEmojisName.some(name => name === emoji)) continue;
+                        if (!serverEmojisName.some(name => name === emoji)) continue; //the check again because if one message has two emojis one from the server and another one not from the server it will add both, so this remove the second one
                         const emojiId = uuid();
                         try {
                             await addEmoji(prisma, emojiId, emoji, messageId);
@@ -65,7 +65,7 @@ async function updateListener() {
     client.on("messageUpdate", async (oldMessage, newMessage) => {
         if (newMessage.author?.bot || oldMessage.author?.bot) return;
         if (oldMessage.content === newMessage.content) return
-        const messageExist = await getMessage(oldMessage.id)
+        const messageExist = await getMessage(prisma, oldMessage.id)
         if (!messageExist) return
 
 
@@ -100,6 +100,7 @@ async function updateListener() {
 
                     await addMessage(prisma, channelId, messageId, messageAuthor as string, createdAt)
                     for (const emoji of match) {
+                        if (!serverEmojisName.some(name => name === emoji)) continue;
                         const emojiId = uuid();
                         try {
                             await addEmoji(prisma, emojiId, emoji, messageId);
@@ -130,7 +131,7 @@ async function deleteListener() {
             await updateChannelMessageTracker(prisma, false, channelId, prevMessages?.first()?.id, undefined)
         }
         if (message.author?.bot) return;
-        const messageExist = await getMessage(message.id);
+        const messageExist = await getMessage(prisma, message.id);
         if (!messageExist) return
 
         const discordEmojiRegExp = /<:(\w+):\d+>/g;
