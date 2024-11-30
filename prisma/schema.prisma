@@ -12,6 +12,7 @@ datasource db {
 
 model Message {
   messageId  String  @id
+  channelId String?
   authorId  String?
   emoji      Emoji[]
   createdAt   BigInt
