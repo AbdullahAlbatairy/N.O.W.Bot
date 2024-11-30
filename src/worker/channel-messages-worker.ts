@@ -16,24 +16,13 @@ let msg: any;
 
 export async function setupBackwardWorker() {
 
-    // new CronJob('56 17 * * *', () => {
-    console.log(`Starting worker at ${new Date().toISOString()}`);
     backwardWorkerJob = new CronJob('*/4 * * * * *', async () => {
         console.log(`Worker running at ${new Date().toISOString()}`);
         await emojisBackwardScanner()
     }, null, true, RIYADH_TIME_ZONE)
 
-    // }, null, true, RIYADH_TIME_ZONE)
 
-
-    new CronJob('0 04 * * *', () => {
-        if (backwardWorkerJob) {
-            backwardWorkerJob.stop();
-            backwardWorkerJob = null;
-        }
-    }, null, true, RIYADH_TIME_ZONE)
-
-    console.log("Worker scheduled to run daily from 12:00 (Riyadh time)");
+    console.log("Worker scheduled to run until there is no more messages to process");
 }
 
 export async function setupForwardWorker() {
@@ -110,7 +99,7 @@ async function emojisBackwardScanner() {
                     console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
                     await addMessage(prisma, message.channel.id, message.id, message.author.id, message.createdTimestamp);
                     for (const emoji of match) {
-                        if(!serverEmojisName.some(name => name === emoji)) continue;
+                        if (!serverEmojisName.some(name => name === emoji)) continue;
                         const emojiId = uuid();
                         await addEmoji(prisma, emojiId, emoji, message.id);
                     }
